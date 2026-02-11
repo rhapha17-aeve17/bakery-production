@@ -1,0 +1,3686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>베이커리 매장 생산관리 시스템</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+        h1 { color: #333; margin-bottom: 30px; text-align: center; font-size: 2.5em; }
+        h2 { color: #333; margin-bottom: 20px; font-size: 1.5em; }
+        h3 { color: #333; margin-bottom: 15px; font-size: 1.2em; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e0e0e0; flex-wrap: wrap; }
+        .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; font-size: 15px; color: #666; transition: all 0.3s; border-bottom: 3px solid transparent; }
+        .tab.active { color: #667eea; border-bottom: 3px solid #667eea; font-weight: bold; }
+        .tab:hover { color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; color: #333; font-weight: 600; font-size: 13px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; transition: border-color 0.3s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; }
+        textarea { resize: vertical; min-height: 70px; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; transition: transform 0.2s, box-shadow 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        button:active { transform: translateY(0); }
+        .btn-danger { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 7px 14px; font-size: 13px; }
+        .btn-secondary { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .btn-success { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .btn-edit { background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%); padding: 7px 14px; font-size: 13px; }
+        .btn-recipe { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); padding: 7px 14px; font-size: 13px; }
+        .btn-small { padding: 5px 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background: #f5f5f5; font-weight: bold; color: #333; position: sticky; top: 0; z-index: 10; }
+        tr:hover { background: #f9f9f9; }
+        .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .message { padding: 12px 20px; border-radius: 8px; display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 300px; text-align: center; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .message.show { display: block; }
+        .grid-container { margin-top: 15px; overflow: auto; max-height: 65vh; border: 2px solid #e0e0e0; border-radius: 8px; }
+        .production-grid { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .production-grid th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px; text-align: left; font-weight: bold; position: sticky; top: 0; z-index: 10; font-size: 12px; }
+        .production-grid td { padding: 5px; border-bottom: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; font-size: 12px; }
+        .production-grid td:first-child { font-weight: 600; background: #f9f9f9; position: sticky; left: 0; z-index: 5; }
+        .production-grid input[type="number"] { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; text-align: right; }
+        .production-grid input[type="number"]:focus { outline: none; border-color: #667eea; background: #f0f4ff; }
+        .production-grid tr:hover td { background: #f5f7ff; }
+        .date-selector { display: flex; gap: 12px; align-items: center; margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 8px; flex-wrap: wrap; }
+        .date-selector input[type="date"] { flex: 0 0 180px; padding: 8px; }
+        .date-selector button { padding: 8px 18px; }
+        .stats-info { display: flex; gap: 12px; flex-wrap: wrap; }
+        .stats-info div { padding: 8px 15px; background: white; border-radius: 6px; font-weight: 600; color: #667eea; font-size: 13px; }
+        .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-top: 15px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); }
+        .stat-card h3 { font-size: 14px; margin-bottom: 8px; opacity: 0.9; }
+        .stat-card .value { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .stat-card .detail { font-size: 12px; opacity: 0.8; margin-top: 4px; }
+        .filter-section { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .filter-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+        .filter-row .form-group { flex: 1; min-width: 140px; margin-bottom: 0; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .summary-card { background: white; border-left: 5px solid #667eea; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); }
+        .summary-card h3 { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .summary-card .value { font-size: 28px; font-weight: bold; color: #333; }
+        .category-badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .category-페스츄리 { background: #ffe4e1; color: #d63031; }
+        .category-비엔누아즈 { background: #fff3cd; color: #856404; }
+        .category-건강빵 { background: #d4edda; color: #155724; }
+        .category-샌드위치 { background: #d1ecf1; color: #0c5460; }
+        .category-반제품 { background: #e2e3e5; color: #383d41; }
+        .category-비정기 제품 { background: #e7d4ff; color: #6f42c1; }
+        .category-기타 { background: #f8d7da; color: #721c24; }
+        .stock-badge { display: inline-block; padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .stock-일반 { background: #cfe2ff; color: #084298; }
+        .stock-특수 { background: #f8d7da; color: #842029; }
+        .stock-프랩 { background: #d1e7dd; color: #0f5132; }
+        .type-원자재 { background: #e7f3ff; color: #004085; }
+        .type-부자재 { background: #fff3cd; color: #856404; }
+        .type-프랩 { background: #d1e7dd; color: #0f5132; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.5); }
+        .modal-content { background-color: #fefefe; margin: 3% auto; padding: 25px; border-radius: 12px; width: 90%; max-width: 900px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .close { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #000; }
+        .price-display { color: #28a745; font-weight: 600; }
+        .cost-display { color: #dc3545; font-weight: 600; }
+        .profit-display { color: #007bff; font-weight: 600; }
+        .recipe-list { margin-top: 15px; }
+        .recipe-item { background: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .recipe-info { flex: 1; }
+        .recipe-actions { display: flex; gap: 8px; }
+        .add-material-form { background: #e3f2fd; padding: 15px; border-radius: 6px; margin-top: 15px; }
+        .cost-summary { background: #fff3cd; padding: 12px; border-radius: 6px; margin-top: 15px; }
+        .cost-summary-large { font-size: 24px; font-weight: bold; color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥐 베이커리 매장 생산관리 시스템</h1>
+
+        <div id="message" class="message"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('grid')">📝 정기 제품</button>
+            <button class="tab" onclick="switchTab('inventory')">📦 재고</button>
+            <button class="tab" onclick="switchTab('sales')">💰 판매</button>
+            <button class="tab" onclick="switchTab('donation')">🎁 기부</button>
+            <button class="tab" onclick="switchTab('irregular')">📊 비정기 제품</button>
+            <button class="tab" onclick="switchTab('target')">🎯 목표 생산량</button>
+            <button class="tab" onclick="switchTab('products')">🛍️ 제품 관리</button>
+            <button class="tab" onclick="switchTab('materials')">📦 자재 관리</button>
+            <button class="tab" onclick="switchTab('receipts')">📥 입고 관리</button>
+            <button class="tab" onclick="switchTab('statistics')">📊 대시보드</button>
+            <button class="tab" onclick="switchTab('ecount')">🔄 이카운트 연동</button>
+        </div>
+
+        <!-- 일괄 입력 탭 -->
+        <div id="grid-tab" class="tab-content active">
+            <div class="date-selector">
+                <div>
+                    <label for="grid-date">생산 날짜</label>
+                    <input type="date" id="grid-date">
+                </div>
+                <button onclick="loadGridData()">불러오기</button>
+                <button onclick="downloadGridData()" style="background: #28a745;">📥 엑셀 다운로드</button>
+                <div class="stats-info">
+                    <div id="product-count">제품: 0개</div>
+                    <div id="filled-count">입력됨: 0개</div>
+                    <div style="color: #28a745; font-size: 12px;">✓ 자동 저장</div>
+                </div>
+            </div>
+
+            <!-- 실제 vs 목표 비교 -->
+            <div class="summary-cards" style="margin-bottom: 15px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>실제 생산금액</h3>
+                    <div class="value price-display" id="actual-amount">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>목표 생산금액</h3>
+                    <div class="value profit-display" id="target-amount">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #ffc107;">
+                    <h3>차이</h3>
+                    <div class="value" id="variance-amount">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #dc3545;">
+                    <h3>달성률</h3>
+                    <div class="value" id="achievement-rate">0%</div>
+                </div>
+            </div>
+
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 180px;">제품명</th>
+                            <th style="min-width: 90px;">카테고리</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 80px;">판매가</th>
+                            <th style="min-width: 80px;">원가</th>
+                            <th style="min-width: 90px;">목표량</th>
+                            <th style="min-width: 110px;">생산량</th>
+                            <th style="min-width: 80px;">차이</th>
+                        </tr>
+                    </thead>
+                    <tbody id="grid-body">
+                        <tr><td colspan="8" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 재고 관리 탭 -->
+        <div id="inventory-tab" class="tab-content">
+            <h2>재고 관리</h2>
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                    💡 판매되지 않은 생산품이 재고로 남습니다. 각 날짜별로 실제 재고량을 입력하세요.
+                </p>
+            </div>
+
+            <div class="date-selector">
+                <div>
+                    <label for="inventory-date">재고 날짜</label>
+                    <input type="date" id="inventory-date">
+                </div>
+                <button onclick="loadInventoryData()">불러오기</button>
+                <button onclick="downloadInventoryData()" style="background: #28a745;">📥 엑셀 다운로드</button>
+                <div class="stats-info">
+                    <div id="inventory-product-count">제품: 0개</div>
+                    <div id="inventory-filled-count">입력됨: 0개</div>
+                    <div style="color: #28a745; font-size: 12px;">✓ 자동 저장</div>
+                </div>
+            </div>
+
+            <!-- 재고 통계 -->
+            <div class="summary-cards" style="margin-bottom: 15px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>재고 총액 (판매가 기준)</h3>
+                    <div class="value price-display" id="inventory-total-value">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #4facfe;">
+                    <h3>일반 (기부) 총액</h3>
+                    <div class="value" style="color: #0c5460;" id="inventory-normal-value">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #f5576c;">
+                    <h3>특수 (재사용) 총액</h3>
+                    <div class="value" style="color: #842029;" id="inventory-special-value">0원</div>
+                </div>
+            </div>
+
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 180px;">제품명</th>
+                            <th style="min-width: 90px;">카테고리</th>
+                            <th style="min-width: 70px;">재고방식</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 80px;">판매가</th>
+                            <th style="min-width: 80px;">원가</th>
+                            <th style="min-width: 110px;">재고량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-body">
+                        <tr><td colspan="7" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 판매 관리 탭 -->
+        <div id="sales-tab" class="tab-content">
+            <h2>💰 판매 데이터</h2>
+
+            <div class="date-selector">
+                <div>
+                    <label for="sales-date">판매 날짜</label>
+                    <input type="date" id="sales-date">
+                </div>
+                <button onclick="loadSalesData()">불러오기</button>
+                <button onclick="downloadSalesData()" style="background: #28a745;">📥 엑셀 다운로드</button>
+                <div class="stats-info">
+                    <div id="sales-product-count">제품: 0개</div>
+                </div>
+            </div>
+
+            <!-- 판매 통계 -->
+            <div class="summary-cards" style="margin-bottom: 15px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>정기 판매금액</h3>
+                    <div class="value price-display" id="sales-regular-revenue">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #4facfe;">
+                    <h3>비정기 판매금액</h3>
+                    <div class="value price-display" id="sales-irregular-revenue">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>총 판매금액</h3>
+                    <div class="value price-display" id="sales-total-revenue">0원</div>
+                </div>
+            </div>
+
+            <!-- 정기 제품 판매 -->
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">📦 정기 제품</h3>
+            <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px; color: #0c5460;">
+                판매량 = 기초재고 + 생산량 - 기말재고
+            </div>
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">제품명</th>
+                            <th style="min-width: 90px;">카테고리</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 70px;">판매가</th>
+                            <th style="min-width: 70px;">원가</th>
+                            <th style="min-width: 80px;">생산량</th>
+                            <th style="min-width: 80px;">기말재고</th>
+                            <th style="min-width: 80px; background: #fff3cd; color: #000;">판매량</th>
+                            <th style="min-width: 90px;">판매금액</th>
+                            <th style="min-width: 80px;">마진</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-regular-body">
+                        <tr><td colspan="10" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 비정기 제품 판매 -->
+            <h3 style="margin-top: 30px; margin-bottom: 10px;">🎁 비정기 제품</h3>
+            <div style="background: #fff3e0; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 13px; color: #e65100;">
+                판매량 = 기초재고 + 생산량 - 기부량 - 기말재고
+            </div>
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">제품명</th>
+                            <th style="min-width: 90px;">카테고리</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 70px;">판매가</th>
+                            <th style="min-width: 70px;">원가</th>
+                            <th style="min-width: 80px;">기초재고</th>
+                            <th style="min-width: 80px;">생산량</th>
+                            <th style="min-width: 80px;">기부량</th>
+                            <th style="min-width: 80px;">기말재고</th>
+                            <th style="min-width: 80px; background: #fff3cd; color: #000;">판매량</th>
+                            <th style="min-width: 90px;">판매금액</th>
+                            <th style="min-width: 80px;">마진</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-irregular-body">
+                        <tr><td colspan="12" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 기부 관리 탭 -->
+        <div id="donation-tab" class="tab-content">
+            <h2>🎁 기부 데이터</h2>
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; color: #2e7d32; font-size: 14px;">
+                    💡 정기 제품(일반 재고)의 재고량과 비정기 제품의 기부량을 조회합니다
+                </p>
+            </div>
+
+            <div class="date-selector">
+                <div>
+                    <label for="donation-date">기부 날짜</label>
+                    <input type="date" id="donation-date">
+                </div>
+                <button onclick="loadDonationData()">불러오기</button>
+                <button onclick="downloadDonationData()" style="background: #28a745;">📥 엑셀 다운로드</button>
+                <div class="stats-info">
+                    <div id="donation-product-count">제품: 0개</div>
+                </div>
+            </div>
+
+            <!-- 기부 통계 -->
+            <div class="summary-cards" style="margin-bottom: 15px;">
+                <div class="summary-card" style="border-left-color: #4caf50;">
+                    <h3>총 기부 수량</h3>
+                    <div class="value" style="color: #4caf50;" id="donation-total-quantity">0개</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #8bc34a;">
+                    <h3>총 기부 금액</h3>
+                    <div class="value price-display" id="donation-total-amount">0원</div>
+                </div>
+            </div>
+
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 150px;">제품명</th>
+                            <th style="min-width: 90px;">카테고리</th>
+                            <th style="min-width: 80px;">제품 구분</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 80px;">판매가</th>
+                            <th style="min-width: 80px; background: #c8e6c9; color: #000;">기부량</th>
+                            <th style="min-width: 100px;">기부 금액</th>
+                        </tr>
+                    </thead>
+                    <tbody id="donation-body">
+                        <tr><td colspan="7" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 비정기 제품 탭 -->
+        <div id="irregular-tab" class="tab-content">
+            <h2>비정기 제품</h2>
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                    💡 2일 이상 진열하는 제품의 재고를 관리합니다. 기초재고 + 생산량 - 기부량 - 기말재고 = 판매량
+                </p>
+            </div>
+
+            <div class="date-selector">
+                <div>
+                    <label for="irregular-date">기록 날짜</label>
+                    <input type="date" id="irregular-date" onchange="loadIrregularData()">
+                </div>
+                <button onclick="loadIrregularData()">불러오기</button>
+                <button onclick="downloadIrregularData()" style="background: #28a745;">📥 엑셀 다운로드</button>
+                <div class="stats-info">
+                    <div id="irregular-product-count">제품: 0개</div>
+                    <div id="irregular-filled-count">입력됨: 0개</div>
+                    <div style="color: #28a745; font-size: 12px;">✓ 자동 저장</div>
+                </div>
+            </div>
+
+            <!-- 판매량 통계 -->
+            <div class="summary-cards" style="margin-bottom: 15px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>총 판매량</h3>
+                    <div class="value" style="color: #667eea;" id="irregular-total-sales">0개</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #4facfe;">
+                    <h3>총 판매액 (판매가 기준)</h3>
+                    <div class="value price-display" id="irregular-total-revenue">0원</div>
+                </div>
+            </div>
+
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 140px;">제품명</th>
+                            <th style="min-width: 50px;">단위</th>
+                            <th style="min-width: 80px;">판매가</th>
+                            <th style="min-width: 90px;">전날 기말재고</th>
+                            <th style="min-width: 90px;">기초재고</th>
+                            <th style="min-width: 70px;">오차</th>
+                            <th style="min-width: 90px;">생산량</th>
+                            <th style="min-width: 90px;">기부량</th>
+                            <th style="min-width: 90px;">기말재고</th>
+                            <th style="min-width: 90px;">판매량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="irregular-body">
+                        <tr><td colspan="10" class="empty-state">날짜를 선택하고 "불러오기"를 클릭하세요</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 목표 생산량 탭 -->
+        <div id="target-tab" class="tab-content">
+            <h2>목표 생산량 설정</h2>
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                    💡 평일과 주말의 목표 생산량을 각각 설정하세요. 일괄 입력 페이지에서 선택한 날짜의 요일에 맞는 목표량이 자동으로 표시됩니다.
+                </p>
+            </div>
+
+            <!-- 목표 생산량 통계 -->
+            <div class="summary-cards" style="margin-bottom: 20px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>평일 목표 생산금액</h3>
+                    <div class="value price-display" id="weekday-target-amount">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #dc3545;">
+                    <h3>평일 목표 원가</h3>
+                    <div class="value cost-display" id="weekday-target-cost">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>평일 예상 이익</h3>
+                    <div class="value profit-display" id="weekday-target-profit">0원</div>
+                </div>
+            </div>
+
+            <div class="summary-cards" style="margin-bottom: 20px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>주말 목표 생산금액</h3>
+                    <div class="value price-display" id="weekend-target-amount">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #dc3545;">
+                    <h3>주말 목표 원가</h3>
+                    <div class="value cost-display" id="weekend-target-cost">0원</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>주말 예상 이익</h3>
+                    <div class="value profit-display" id="weekend-target-profit">0원</div>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-bottom: 15px;">
+                <button class="btn-success" onclick="saveTargetData()">💾 저장</button>
+            </div>
+
+            <div class="grid-container">
+                <table class="production-grid">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 200px;">제품명</th>
+                            <th style="min-width: 100px;">카테고리</th>
+                            <th style="min-width: 60px;">단위</th>
+                            <th style="min-width: 90px;">판매가</th>
+                            <th style="min-width: 120px;">평일 목표량</th>
+                            <th style="min-width: 120px;">주말 목표량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="target-body">
+                        <tr><td colspan="6" class="empty-state">로딩 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 제품 관리 탭 -->
+        <div id="products-tab" class="tab-content">
+            <h2>새 제품 추가</h2>
+            <form id="product-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="product-name">제품명 *</label>
+                        <input type="text" id="product-name" required placeholder="예: 크루아상">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-category">카테고리 *</label>
+                        <select id="product-category" required>
+                            <option value="페스츄리">페스츄리</option>
+                            <option value="비엔누아즈">비엔누아즈</option>
+                            <option value="건강빵">건강빵</option>
+                            <option value="샌드위치">샌드위치</option>
+                            <option value="반제품">반제품</option>
+                            <option value="비정기 제품">비정기 제품</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-stock-type">재고 처리 방식 *</label>
+                        <select id="product-stock-type" required>
+                            <option value="일반">일반</option>
+                            <option value="특수">특수</option>
+                            <option value="프랩">프랩</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-unit">단위 *</label>
+                        <input type="text" id="product-unit" required placeholder="예: 개">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-price">판매 가격 (원) *</label>
+                        <input type="number" id="product-price" step="100" required placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-ecount-code">이카운트 제품코드</label>
+                        <input type="text" id="product-ecount-code" placeholder="예: PROD001">
+                        <small style="color: #666; font-size: 11px;">이카운트 연동 시 필수</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-order">No (순서) *</label>
+                        <input type="number" id="product-order" min="1" required placeholder="1">
+                        <small style="color: #666; font-size: 11px;">작은 번호가 먼저 표시됩니다</small>
+                    </div>
+                </div>
+                <button type="submit">제품 추가</button>
+            </form>
+
+            <h2 style="margin-top: 30px;">제품 목록</h2>
+
+            <!-- 검색 및 필터 -->
+            <div class="filter-section" style="margin-bottom: 15px;">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label for="product-search">제품명 검색</label>
+                        <input type="text" id="product-search" placeholder="제품명 입력..." onkeyup="filterProducts()">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-category-filter">카테고리</label>
+                        <select id="product-category-filter" onchange="filterProducts()">
+                            <option value="">전체</option>
+                            <option value="페스츄리">페스츄리</option>
+                            <option value="비엔누아즈">비엔누아즈</option>
+                            <option value="건강빵">건강빵</option>
+                            <option value="샌드위치">샌드위치</option>
+                            <option value="반제품">반제품</option>
+                            <option value="비정기 제품">비정기 제품</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-stock-filter">재고방식</label>
+                        <select id="product-stock-filter" onchange="filterProducts()">
+                            <option value="">전체</option>
+                            <option value="일반">일반</option>
+                            <option value="특수">특수</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button class="btn-secondary" onclick="resetProductFilter()">초기화</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table id="products-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">No</th>
+                            <th>제품명</th>
+                            <th>카테고리</th>
+                            <th>재고방식</th>
+                            <th>단위</th>
+                            <th>판매가</th>
+                            <th>원가(레시피)</th>
+                            <th>원가율</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 자재 관리 탭 -->
+        <div id="materials-tab" class="tab-content">
+            <h2>새 자재 추가</h2>
+            <form id="material-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="material-name">자재명 *</label>
+                        <input type="text" id="material-name" required placeholder="예: 밀가루, 계란, 우유">
+                    </div>
+                    <div class="form-group">
+                        <label for="material-type">유형 *</label>
+                        <select id="material-type" required onchange="handleMaterialTypeChange()">
+                            <option value="원자재">원자재</option>
+                            <option value="부자재">부자재</option>
+                            <option value="프랩">프랩</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="material-weight">수량 *</label>
+                        <input type="number" id="material-weight" step="0.01" required placeholder="1000">
+                    </div>
+                    <div class="form-group">
+                        <label for="material-unit">단위 *</label>
+                        <select id="material-unit" required onchange="handleUnitChange()">
+                            <option value="g">g (그램)</option>
+                            <option value="kg">kg (킬로그램)</option>
+                            <option value="EA">EA (개)</option>
+                            <option value="PK">PK (포장)</option>
+                            <option value="L">L (리터)</option>
+                            <option value="ml">ml (밀리리터)</option>
+                            <option value="custom">직접 입력...</option>
+                        </select>
+                        <input type="text" id="material-unit-custom" style="display:none; margin-top:5px;" placeholder="단위 입력">
+                    </div>
+                    <div class="form-group" id="material-price-group">
+                        <label for="material-price">입고 단가 (원) *</label>
+                        <input type="number" id="material-price" step="1" required placeholder="5000">
+                        <small style="color: #999; font-size: 11px; display: none;" id="material-price-note">프랩 자재는 레시피로 자동 계산됩니다</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="material-supplier">공급업체</label>
+                        <input type="text" id="material-supplier" placeholder="선택사항">
+                    </div>
+                    <div class="form-group">
+                        <label for="material-ecount-code">이카운트 제품코드</label>
+                        <input type="text" id="material-ecount-code" placeholder="예: MAT001">
+                        <small style="color: #666; font-size: 11px;">이카운트 연동 시 필수</small>
+                    </div>
+                </div>
+                <button type="submit">자재 추가</button>
+            </form>
+
+            <h2 style="margin-top: 30px;">자재 목록</h2>
+            <div style="overflow-x: auto;">
+                <table id="materials-table">
+                    <thead>
+                        <tr>
+                            <th>자재명</th>
+                            <th>유형</th>
+                            <th>수량</th>
+                            <th>단위</th>
+                            <th>입고 단가</th>
+                            <th>단위당 가격</th>
+                            <th>공급업체</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 입고 관리 탭 -->
+        <div id="receipts-tab" class="tab-content">
+            <h2>📥 자재 입고 관리</h2>
+
+            <!-- 입고 등록 폼 -->
+            <div class="form-container">
+                <h3>입고 등록</h3>
+                <form id="receipt-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="receipt-material">자재</label>
+                            <select id="receipt-material" required>
+                                <option value="">자재 선택</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="receipt-date">입고 날짜</label>
+                            <input type="date" id="receipt-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="receipt-quantity">수량</label>
+                            <input type="number" id="receipt-quantity" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="receipt-unit-price">단가 (원)</label>
+                            <input type="number" id="receipt-unit-price" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="receipt-supplier">공급업체</label>
+                            <input type="text" id="receipt-supplier" placeholder="공급업체명">
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label for="receipt-note">비고</label>
+                            <input type="text" id="receipt-note" placeholder="비고사항">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">입고 등록</button>
+                </form>
+            </div>
+
+            <!-- 입고 이력 필터 -->
+            <div class="date-selector" style="margin-top: 30px;">
+                <div>
+                    <label for="receipt-filter-material">자재 필터</label>
+                    <select id="receipt-filter-material" onchange="loadReceipts()">
+                        <option value="">전체 자재</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="receipt-filter-start">시작일</label>
+                    <input type="date" id="receipt-filter-start" onchange="loadReceipts()">
+                </div>
+                <div>
+                    <label for="receipt-filter-end">종료일</label>
+                    <input type="date" id="receipt-filter-end" onchange="loadReceipts()">
+                </div>
+                <button onclick="loadReceipts()">🔄 새로고침</button>
+            </div>
+
+            <!-- 입고 이력 테이블 -->
+            <div class="table-container">
+                <table id="receipts-table">
+                    <thead>
+                        <tr>
+                            <th>입고일</th>
+                            <th>자재명</th>
+                            <th>구분</th>
+                            <th>수량</th>
+                            <th>단위</th>
+                            <th>단가</th>
+                            <th>금액</th>
+                            <th>공급업체</th>
+                            <th>비고</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- 자재별 현재 평균 단가 -->
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <h3>자재별 현재 평균 단가 (가중평균법)</h3>
+                <div id="material-avg-prices" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <!-- 자재별 평균 단가가 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 탭 -->
+        <div id="statistics-tab" class="tab-content">
+            <h2>📊 대시보드</h2>
+
+            <!-- 기간 선택 -->
+            <div class="date-selector" style="margin-bottom: 20px;">
+                <div>
+                    <label for="dashboard-days">조회 기간</label>
+                    <select id="dashboard-days" onchange="loadDashboard()">
+                        <option value="7">최근 7일</option>
+                        <option value="14">최근 14일</option>
+                        <option value="30" selected>최근 30일</option>
+                    </select>
+                </div>
+                <button onclick="loadDashboard()">🔄 새로고침</button>
+            </div>
+
+            <!-- 주요 지표 카드 -->
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>총 판매금액</h3>
+                    <div class="value price-display" id="dashboard-total-sales">0원</div>
+                    <small style="color: #666;">선택한 기간 동안</small>
+                </div>
+                <div class="summary-card" style="border-left-color: #4facfe;">
+                    <h3>총 생산금액</h3>
+                    <div class="value price-display" id="dashboard-total-production">0원</div>
+                    <small style="color: #666;">선택한 기간 동안</small>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>총 마진</h3>
+                    <div class="value profit-display" id="dashboard-total-margin">0원</div>
+                    <small style="color: #666;">판매금액 - 원가</small>
+                </div>
+                <div class="summary-card" style="border-left-color: #ff6b6b;">
+                    <h3>총 기부 금액</h3>
+                    <div class="value" style="color: #ff6b6b;" id="dashboard-total-donation">0원</div>
+                    <small style="color: #666;">기부 총액</small>
+                </div>
+                <div class="summary-card" style="border-left-color: #ffc107;">
+                    <h3>평균 마진율</h3>
+                    <div class="value" id="dashboard-avg-margin-rate">0%</div>
+                    <small style="color: #666;">마진 / 판매금액</small>
+                </div>
+            </div>
+
+            <!-- 차트 영역 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">📈 일별 판매 추이</h3>
+                    <div style="height: 300px;">
+                        <canvas id="salesTrendChart"></canvas>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">🥧 카테고리별 판매 비중</h3>
+                    <div style="height: 300px;">
+                        <canvas id="categoryPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">🏆 제품별 판매 TOP 5</h3>
+                    <div style="height: 350px;">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">📉 제품별 판매 WORST 5</h3>
+                    <div style="height: 350px;">
+                        <canvas id="worstProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 이카운트 연동 탭 -->
+        <div id="ecount-tab" class="tab-content">
+            <h2>🔄 이카운트 ERP 연동</h2>
+
+            <!-- 연동 설정 섹션 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">⚙️ 이카운트 API 설정</h3>
+                <form id="ecount-settings-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ecount-com-code">회사 코드 (COM_CODE) *</label>
+                            <input type="text" id="ecount-com-code" maxlength="6" placeholder="6자리 회사 코드" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ecount-user-id">사용자 ID (USER_ID) *</label>
+                            <input type="text" id="ecount-user-id" placeholder="이카운트 사용자 ID" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ecount-zone">존 (ZONE) *</label>
+                            <input type="text" id="ecount-zone" maxlength="2" placeholder="예: CC" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="ecount-api-key">API 인증키 (API_CERT_KEY) *</label>
+                        <input type="password" id="ecount-api-key" placeholder="이카운트 API 인증키" required>
+                        <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                            💡 이카운트 > 셀프커스터마이징 > 정보관리 > API 인증키발급 메뉴에서 발급받으세요.
+                        </small>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="submit" class="btn-success">💾 설정 저장</button>
+                        <button type="button" onclick="testEcountConnection()" class="btn-secondary">🔌 연결 테스트</button>
+                        <button type="button" onclick="loadEcountSettings()" class="btn-small">🔄 설정 불러오기</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 제품 코드 자동 매칭 섹션 -->
+            <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">🔗 이카운트 제품 코드 자동 매칭</h3>
+                <p style="color: #1565c0; margin-bottom: 15px; font-size: 14px;">
+                    💡 이카운트 품목 등록 엑셀을 CSV로 저장한 후 업로드하면, 제품명이 일치하는 항목의 코드를 자동으로 매칭해드립니다.<br>
+                    ⚠️ 자재는 <strong>원자재</strong> 유형만 매칭됩니다 (부자재, 프랩은 제외).
+                </p>
+
+                <div class="form-group">
+                    <label>CSV 파일 업로드 (품목코드, 품목명 포함)</label>
+                    <input type="file" id="ecount-csv-file" accept=".csv" onchange="parseEcountCSV(event)" style="margin-top: 5px;">
+                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                        ℹ️ 엑셀 파일을 CSV(쉼표로 분리)로 저장하여 업로드하세요. 품목코드와 품목명 열이 필요합니다.
+                    </small>
+                </div>
+
+                <!-- 매칭 결과 -->
+                <div id="match-results" style="display: none; margin-top: 20px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px;">📊 매칭 결과</h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div>
+                                <strong>총 제품:</strong> <span id="match-total-products">0</span>개
+                            </div>
+                            <div style="color: #28a745;">
+                                <strong>매칭 성공:</strong> <span id="match-success-products">0</span>개
+                            </div>
+                            <div>
+                                <strong>총 자재:</strong> <span id="match-total-materials">0</span>개
+                            </div>
+                            <div style="color: #28a745;">
+                                <strong>매칭 성공:</strong> <span id="match-success-materials">0</span>개
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="max-height: 300px; overflow-y: auto; margin-bottom: 15px;">
+                        <table style="width: 100%; border-collapse: collapse; background: white;">
+                            <thead style="position: sticky; top: 0; background: #f8f9fa;">
+                                <tr>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">유형</th>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">이름</th>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">현재 코드</th>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">제안 코드</th>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">상태</th>
+                                    <th style="padding: 10px; border: 1px solid #ddd;">선택</th>
+                                </tr>
+                            </thead>
+                            <tbody id="match-results-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="applySelectedMatches()" class="btn-success">✅ 선택 항목 적용</button>
+                        <button onclick="applyAllMatches()" class="btn-primary">✅ 모두 적용</button>
+                        <button onclick="clearMatchResults()" class="btn-secondary">🗑️ 결과 지우기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 연동 통계 -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                <div class="summary-card" style="border-left-color: #667eea;">
+                    <h3>총 동기화</h3>
+                    <div class="value" id="ecount-stat-total">0건</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #28a745;">
+                    <h3>성공</h3>
+                    <div class="value profit-display" id="ecount-stat-success">0건</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #dc3545;">
+                    <h3>실패</h3>
+                    <div class="value cost-display" id="ecount-stat-failed">0건</div>
+                </div>
+                <div class="summary-card" style="border-left-color: #ffc107;">
+                    <h3>성공률</h3>
+                    <div class="value" style="color: #ffc107;" id="ecount-stat-rate">0%</div>
+                </div>
+            </div>
+
+            <!-- 수동 동기화 섹션 -->
+            <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">📤 수동 데이터 동기화</h3>
+                <p style="color: #856404; margin-bottom: 15px; font-size: 14px;">
+                    생산 실적은 이카운트 '판매' 데이터로, 자재 입고는 '매입' 데이터로 전송됩니다.
+                </p>
+                <div class="filter-section">
+                    <div class="filter-row">
+                        <div class="form-group">
+                            <label>동기화 유형</label>
+                            <select id="sync-type">
+                                <option value="production">생산 실적 → 판매</option>
+                                <option value="receipt">자재 입고 → 매입</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>시작 날짜</label>
+                            <input type="date" id="sync-start-date">
+                        </div>
+                        <div class="form-group">
+                            <label>종료 날짜</label>
+                            <input type="date" id="sync-end-date">
+                        </div>
+                        <div style="display: flex; align-items: flex-end; gap: 10px;">
+                            <button onclick="syncDataByDateRange()" class="btn-success">🔄 선택 기간 동기화</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 동기화 로그 -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3>📋 동기화 로그</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="log-filter-type" onchange="loadEcountLogs()">
+                            <option value="">전체 유형</option>
+                            <option value="sale">판매 (생산실적)</option>
+                            <option value="purchase">매입 (자재입고)</option>
+                        </select>
+                        <button onclick="loadEcountLogs()" class="btn-small">🔄 새로고침</button>
+                    </div>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>시간</th>
+                                <th>유형</th>
+                                <th>레코드 ID</th>
+                                <th>상태</th>
+                                <th>오류 메시지</th>
+                                <th>상세</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ecount-logs-tbody">
+                            <tr>
+                                <td colspan="6" class="empty-state">로그를 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 제품 수정 모달 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>제품 수정</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="edit-product-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-product-name">제품명 *</label>
+                        <input type="text" id="edit-product-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-category">카테고리 *</label>
+                        <select id="edit-product-category" required>
+                            <option value="페스츄리">페스츄리</option>
+                            <option value="비엔누아즈">비엔누아즈</option>
+                            <option value="건강빵">건강빵</option>
+                            <option value="샌드위치">샌드위치</option>
+                            <option value="반제품">반제품</option>
+                            <option value="비정기 제품">비정기 제품</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-stock-type">재고 처리 방식 *</label>
+                        <select id="edit-product-stock-type" required>
+                            <option value="일반">일반</option>
+                            <option value="특수">특수</option>
+                            <option value="프랩">프랩</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-unit">단위 *</label>
+                        <input type="text" id="edit-product-unit" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-price">판매 가격 (원) *</label>
+                        <input type="number" id="edit-product-price" step="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-ecount-code">이카운트 제품코드</label>
+                        <input type="text" id="edit-product-ecount-code" placeholder="예: PROD001">
+                        <small style="color: #666; font-size: 11px;">이카운트 연동 시 필수</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-order">No (순서) *</label>
+                        <input type="number" id="edit-product-order" min="1" required>
+                        <small style="color: #666; font-size: 11px;">작은 번호가 먼저 표시됩니다</small>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit">수정 완료</button>
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 레시피 편집 모달 -->
+    <div id="recipe-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="recipe-modal-title">제품 레시피 관리</h2>
+                <span class="close" onclick="closeRecipeModal()">&times;</span>
+            </div>
+
+            <div id="recipe-content">
+                <h3>현재 레시피</h3>
+                <div id="recipe-list" class="recipe-list"></div>
+
+                <div class="cost-summary">
+                    <strong>총 원가: </strong>
+                    <span id="recipe-total-cost" class="cost-summary-large">0원</span>
+                </div>
+
+                <div class="add-material-form">
+                    <h3>자재 추가</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="recipe-material-select">자재 선택</label>
+                            <select id="recipe-material-select" onchange="updateRecipeUnitLabel()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="recipe-material-quantity">
+                                사용량 <span id="recipe-unit-label">(단위)</span>
+                            </label>
+                            <input type="number" id="recipe-material-quantity" step="0.01" placeholder="100">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button class="btn-success" onclick="addMaterialToRecipe()">추가</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="closeRecipeModal()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 자재 수정 모달 -->
+    <div id="edit-material-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>자재 수정</h2>
+                <span class="close" onclick="closeEditMaterialModal()">&times;</span>
+            </div>
+            <form id="edit-material-form">
+                <input type="hidden" id="edit-material-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-material-name">자재명 *</label>
+                        <input type="text" id="edit-material-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-material-type">유형 *</label>
+                        <select id="edit-material-type" required onchange="handleEditMaterialTypeChange()">
+                            <option value="원자재">원자재</option>
+                            <option value="부자재">부자재</option>
+                            <option value="프랩">프랩</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-material-weight">수량 *</label>
+                        <input type="number" id="edit-material-weight" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-material-unit">단위 *</label>
+                        <select id="edit-material-unit" required onchange="handleEditUnitChange()">
+                            <option value="g">g (그램)</option>
+                            <option value="kg">kg (킬로그램)</option>
+                            <option value="EA">EA (개)</option>
+                            <option value="PK">PK (포장)</option>
+                            <option value="L">L (리터)</option>
+                            <option value="ml">ml (밀리리터)</option>
+                            <option value="custom">직접 입력...</option>
+                        </select>
+                        <input type="text" id="edit-material-unit-custom" style="display:none; margin-top:5px;" placeholder="단위 입력">
+                    </div>
+                    <div class="form-group" id="edit-material-price-group">
+                        <label for="edit-material-price">입고 단가 (원) *</label>
+                        <input type="number" id="edit-material-price" step="1" required>
+                        <small style="color: #999; font-size: 11px; display: none;" id="edit-material-price-note">프랩 자재는 레시피로 자동 계산됩니다</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit-material-supplier">공급업체</label>
+                    <input type="text" id="edit-material-supplier">
+                </div>
+                <div class="form-group">
+                    <label for="edit-material-ecount-code">이카운트 제품코드</label>
+                    <input type="text" id="edit-material-ecount-code" placeholder="예: MAT001">
+                    <small style="color: #666; font-size: 11px;">이카운트 연동 시 필수</small>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit">수정 완료</button>
+                    <button type="button" class="btn-secondary" onclick="closeEditMaterialModal()">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 자재 레시피 관리 모달 -->
+    <div id="material-recipe-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="material-recipe-modal-title">자재 레시피 관리</h2>
+                <span class="close" onclick="closeMaterialRecipeModal()">&times;</span>
+            </div>
+
+            <div id="material-recipe-content">
+                <h3>현재 레시피 (재료 구성)</h3>
+                <div id="material-recipe-list" class="recipe-list"></div>
+
+                <div class="cost-summary">
+                    <strong>총 원가: </strong>
+                    <span id="material-recipe-total-cost" class="cost-summary-large">0원</span>
+                </div>
+
+                <div class="add-material-form">
+                    <h3>재료 추가</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="material-recipe-material-select">자재 선택</label>
+                            <select id="material-recipe-material-select" onchange="updateMaterialRecipeUnitLabel()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="material-recipe-quantity">
+                                사용량 <span id="material-recipe-unit-label">(단위)</span>
+                            </label>
+                            <input type="number" id="material-recipe-quantity" step="0.01" placeholder="100">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button class="btn-success" onclick="addIngredientToMaterialRecipe()">추가</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="closeMaterialRecipeModal()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentGridData = [];
+        let currentInventoryData = [];
+        let currentIrregularData = [];
+        let currentTargetData = [];
+        let currentSalesData = [];
+        let currentDonationData = [];
+        let currentRecipeProductId = null;
+        let allMaterials = [];
+        let gridAutoSaveTimer = null;
+        let inventoryAutoSaveTimer = null;
+        let irregularAutoSaveTimer = null;
+
+        // 오늘 날짜 설정
+        document.getElementById('grid-date').valueAsDate = new Date();
+        document.getElementById('inventory-date').valueAsDate = new Date();
+        document.getElementById('irregular-date').valueAsDate = new Date();
+        document.getElementById('sales-date').valueAsDate = new Date();
+        document.getElementById('donation-date').valueAsDate = new Date();
+
+        // 메시지 표시
+        function showMessage(text, type = 'success') {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${type} show`;
+            setTimeout(() => messageEl.classList.remove('show'), 3000);
+        }
+
+        // 금액 포맷
+        function formatCurrency(amount) {
+            if (!amount && amount !== 0) return '0';
+            return Math.round(amount).toLocaleString('ko-KR');
+        }
+
+        // CSV 다운로드 공통 함수
+        function downloadCSV(data, filename) {
+            if (!data || data.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            // CSV 헤더와 데이터 생성
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => {
+                    let value = row[header];
+                    // 숫자가 아닌 값은 따옴표로 감싸기
+                    if (typeof value === 'string' && value.includes(',')) {
+                        value = `"${value}"`;
+                    }
+                    return value ?? '';
+                }).join(','))
+            ].join('\n');
+
+            // BOM 추가 (Excel에서 한글 깨짐 방지)
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showMessage(`${filename} 다운로드 완료!`);
+        }
+
+        // 탭 전환
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'grid') loadGridData();
+            else if (tabName === 'inventory') loadInventoryData();
+            else if (tabName === 'irregular') loadIrregularData();
+            else if (tabName === 'target') loadTargetData();
+            else if (tabName === 'sales') loadSalesData();
+            else if (tabName === 'donation') loadDonationData();
+            else if (tabName === 'products') loadProducts();
+            else if (tabName === 'materials') loadMaterials();
+            else if (tabName === 'receipts') loadReceipts();
+            else if (tabName === 'statistics') loadDashboard();
+            else if (tabName === 'ecount') {
+                loadEcountSettings();
+                loadEcountStats();
+                loadEcountLogs();
+            }
+        }
+
+        // 요일 계산 (0=일요일, 6=토요일)
+        function isWeekend(dateString) {
+            const date = new Date(dateString);
+            const day = date.getDay();
+            return day === 0 || day === 6; // 일요일 또는 토요일
+        }
+
+        // 그리드 데이터 로드
+        async function loadGridData() {
+            const date = document.getElementById('grid-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            // 생산량 및 목표량 데이터 로드
+            const [productionResponse, targetResponse] = await Promise.all([
+                fetch(`/api/production/grid?date=${date}`),
+                fetch('/api/target-production')
+            ]);
+
+            currentGridData = await productionResponse.json();
+            const targetData = await targetResponse.json();
+            const tbody = document.getElementById('grid-body');
+
+            if (currentGridData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">제품이 없습니다. "제품 관리" 탭에서 제품을 먼저 추가하세요.</td></tr>';
+                updateProductionStats();
+                return;
+            }
+
+            // 요일에 따라 목표량 결정
+            const weekend = isWeekend(date);
+
+            tbody.innerHTML = currentGridData.map((item, index) => {
+                // 해당 제품의 목표량 찾기
+                const target = targetData.find(t => t.id === item.id);
+                const targetQty = target ? (weekend ? target.weekend_target : target.weekday_target) : 0;
+                const actualQty = parseFloat(item.quantity) || 0;
+                const diff = actualQty - targetQty;
+
+                return `
+                <tr>
+                    <td>${item.name}</td>
+                    <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                    <td>${item.unit}</td>
+                    <td class="price-display">${formatCurrency(item.price)}원</td>
+                    <td class="cost-display">${formatCurrency(item.cost)}원</td>
+                    <td style="background: #fff3cd; font-weight: 600;">${targetQty > 0 ? targetQty : ''}</td>
+                    <td>
+                        <input type="number" step="1" min="0" data-index="${index}"
+                               value="${item.quantity || ''}" placeholder="생산량 입력"
+                               oninput="autoSaveGrid()" onkeypress="handleKeyPress(event)">
+                    </td>
+                    <td style="font-weight: 600; color: ${diff >= 0 ? '#28a745' : '#dc3545'};">
+                        ${actualQty > 0 ? (diff >= 0 ? '+' : '') + diff : ''}
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+            updateProductionStats();
+            const firstInput = tbody.querySelector('input[type="number"]');
+            if (firstInput) setTimeout(() => firstInput.focus(), 100);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const inputs = Array.from(document.querySelectorAll('#grid-body input[type="number"]'));
+                const currentIndex = inputs.indexOf(event.target);
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                    inputs[currentIndex + 1].select();
+                }
+            }
+        }
+
+        // 정기 제품 생산량 엑셀 다운로드
+        function downloadGridData() {
+            if (!currentGridData || currentGridData.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            const date = document.getElementById('grid-date').value;
+            const downloadData = currentGridData.map(item => ({
+                '제품명': item.name,
+                '카테고리': item.category,
+                '단위': item.unit,
+                '판매가': item.price,
+                '원가': item.cost,
+                '생산량': item.quantity || 0
+            }));
+
+            downloadCSV(downloadData, `정기제품_생산량_${date}.csv`);
+        }
+
+        async function updateProductionStats() {
+            document.getElementById('product-count').textContent = `제품: ${currentGridData.length}개`;
+
+            const date = document.getElementById('grid-date').value;
+            if (!date) return;
+
+            const inputs = document.querySelectorAll('#grid-body input[type="number"]');
+            let filledCount = 0;
+            let actualTotal = 0;
+            let targetTotal = 0;
+
+            // 목표량 데이터 가져오기
+            const targetResponse = await fetch('/api/target-production');
+            const targetData = await targetResponse.json();
+            const weekend = isWeekend(date);
+
+            inputs.forEach((input, idx) => {
+                const quantity = parseFloat(input.value) || 0;
+                if (quantity > 0) filledCount++;
+
+                const product = currentGridData[idx];
+                const target = targetData.find(t => t.id === product.id);
+                const targetQty = target ? (weekend ? target.weekend_target : target.weekday_target) : 0;
+
+                actualTotal += quantity * (product.price || 0);
+                targetTotal += targetQty * (product.price || 0);
+            });
+
+            const variance = actualTotal - targetTotal;
+            const achievementRate = targetTotal > 0 ? (actualTotal / targetTotal * 100) : 0;
+
+            document.getElementById('filled-count').textContent = `입력됨: ${filledCount}개`;
+            document.getElementById('actual-amount').textContent = formatCurrency(actualTotal) + '원';
+            document.getElementById('target-amount').textContent = formatCurrency(targetTotal) + '원';
+            document.getElementById('variance-amount').textContent =
+                (variance >= 0 ? '+' : '') + formatCurrency(variance) + '원';
+            document.getElementById('variance-amount').style.color = variance >= 0 ? '#28a745' : '#dc3545';
+            document.getElementById('achievement-rate').textContent = achievementRate.toFixed(1) + '%';
+            document.getElementById('achievement-rate').style.color =
+                achievementRate >= 100 ? '#28a745' : achievementRate >= 80 ? '#ffc107' : '#dc3545';
+        }
+
+        async function saveGridData() {
+            const date = document.getElementById('grid-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            const inputs = document.querySelectorAll('#grid-body input[type="number"]');
+            const products = [];
+            inputs.forEach(input => {
+                const index = parseInt(input.dataset.index);
+                products.push({ product_id: currentGridData[index].id, quantity: input.value });
+            });
+
+            const response = await fetch('/api/production/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: date, products: products })
+            });
+
+            const result = await response.json();
+            if (result.success) showMessage('✅ 저장되었습니다!');
+            else showMessage('저장 실패: ' + result.error, 'error');
+        }
+
+        // 재고 데이터 로드
+        async function loadInventoryData() {
+            const date = document.getElementById('inventory-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            const response = await fetch(`/api/inventory/grid?date=${date}`);
+            currentInventoryData = await response.json();
+            const tbody = document.getElementById('inventory-body');
+
+            if (currentInventoryData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">제품이 없습니다. "제품 관리" 탭에서 제품을 먼저 추가하세요.</td></tr>';
+                updateInventoryStats();
+                return;
+            }
+
+            tbody.innerHTML = currentInventoryData.map((item, index) => {
+                const stockType = item.stock_type || '일반';
+                const stockLabel = stockType === '일반' ? '일반 (기부)' : '특수 (재사용)';
+                return `
+                <tr>
+                    <td>${item.name}</td>
+                    <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                    <td><span class="stock-badge stock-${stockType}">${stockLabel}</span></td>
+                    <td>${item.unit}</td>
+                    <td class="price-display">${formatCurrency(item.price)}원</td>
+                    <td class="cost-display">${formatCurrency(item.cost)}원</td>
+                    <td>
+                        <input type="number" step="1" min="0" data-index="${index}"
+                               value="${item.quantity || ''}" placeholder="재고량 입력"
+                               oninput="autoSaveInventory()" onkeypress="handleKeyPress(event)">
+                    </td>
+                </tr>
+            `;
+            }).join('');
+
+            updateInventoryStats();
+            const firstInput = tbody.querySelector('input[type="number"]');
+            if (firstInput) setTimeout(() => firstInput.focus(), 100);
+        }
+
+        // 재고 데이터 엑셀 다운로드
+        function downloadInventoryData() {
+            if (!currentInventoryData || currentInventoryData.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            const date = document.getElementById('inventory-date').value;
+            const downloadData = currentInventoryData.map(item => ({
+                '제품명': item.name,
+                '카테고리': item.category,
+                '재고처리': item.stock_type === '일반' ? '일반(기부)' : '특수(재사용)',
+                '단위': item.unit,
+                '판매가': item.price,
+                '원가': item.cost,
+                '재고량': item.quantity || 0
+            }));
+
+            downloadCSV(downloadData, `재고_${date}.csv`);
+        }
+
+        // 재고 통계 업데이트
+        function updateInventoryStats() {
+            document.getElementById('inventory-product-count').textContent = `제품: ${currentInventoryData.length}개`;
+
+            const inputs = document.querySelectorAll('#inventory-body input[type="number"]');
+            let filledCount = 0;
+            let totalValue = 0;
+            let normalValue = 0;
+            let specialValue = 0;
+
+            inputs.forEach((input, idx) => {
+                const quantity = parseFloat(input.value) || 0;
+                if (quantity > 0) {
+                    filledCount++;
+                }
+
+                const product = currentInventoryData[idx];
+                const itemValue = quantity * (product.price || 0);
+                totalValue += itemValue;
+
+                // 재고 처리 방식에 따라 분류
+                const stockType = product.stock_type || '일반';
+                if (stockType === '일반') {
+                    normalValue += itemValue;
+                } else if (stockType === '특수') {
+                    specialValue += itemValue;
+                }
+            });
+
+            document.getElementById('inventory-filled-count').textContent = `입력됨: ${filledCount}개`;
+            document.getElementById('inventory-total-value').textContent = formatCurrency(totalValue) + '원';
+            document.getElementById('inventory-normal-value').textContent = formatCurrency(normalValue) + '원';
+            document.getElementById('inventory-special-value').textContent = formatCurrency(specialValue) + '원';
+        }
+
+        // 재고 데이터 저장
+        async function saveInventoryData() {
+            const date = document.getElementById('inventory-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            const inputs = document.querySelectorAll('#inventory-body input[type="number"]');
+            const products = [];
+            inputs.forEach(input => {
+                const index = parseInt(input.dataset.index);
+                products.push({ product_id: currentInventoryData[index].id, quantity: input.value });
+            });
+
+            const response = await fetch('/api/inventory/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: date, products: products })
+            });
+
+            const result = await response.json();
+            if (result.success) showMessage('✅ 재고가 저장되었습니다!');
+            else showMessage('저장 실패: ' + result.error, 'error');
+        }
+
+        // 생산량 자동 저장 (디바운싱)
+        function autoSaveGrid() {
+            updateProductionStats();
+            clearTimeout(gridAutoSaveTimer);
+            gridAutoSaveTimer = setTimeout(async () => {
+                await saveGridData();
+            }, 1000); // 1초 후 자동 저장
+        }
+
+        // 재고 자동 저장 (디바운싱)
+        function autoSaveInventory() {
+            updateInventoryStats();
+            clearTimeout(inventoryAutoSaveTimer);
+            inventoryAutoSaveTimer = setTimeout(async () => {
+                await saveInventoryData();
+            }, 1000); // 1초 후 자동 저장
+        }
+
+        // ========== 비정기 제품 관리 ==========
+
+        async function loadIrregularData() {
+            const date = document.getElementById('irregular-date').value;
+            if (!date) {
+                showMessage('날짜를 선택하세요', 'error');
+                return;
+            }
+
+            const response = await fetch(`/api/irregular-product/grid?date=${date}`);
+            currentIrregularData = await response.json();
+
+            const tbody = document.getElementById('irregular-body');
+
+            if (currentIrregularData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">비정기 제품 카테고리에 등록된 제품이 없습니다</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = currentIrregularData.map((item, index) => {
+                const prevClosing = item.prev_closing_inventory || 0;
+                // 기존 기초재고가 없으면 전날 기말재고로 자동 채움
+                const opening = item.opening_inventory || (item.opening_inventory === 0 ? 0 : prevClosing);
+                const production = item.production || '';
+                const donation = item.donation || '';
+                const closing = item.closing_inventory || '';
+                const sales = calculateSales(opening, production, donation, closing);
+                const variance = prevClosing - (parseFloat(opening) || 0);
+                const varianceStyle = variance !== 0 ? 'color: #dc3545; font-weight: 600;' : 'color: #28a745;';
+
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${item.name}</td>
+                        <td>${item.unit}</td>
+                        <td class="price-display">${Number(item.price || 0).toLocaleString()}원</td>
+                        <td style="background: #f0f0f0; font-weight: 600; color: #666;">${prevClosing || '-'}</td>
+                        <td>
+                            <input type="number" step="1" min="0" data-index="${index}" data-field="opening"
+                                   value="${opening}" placeholder="기초재고"
+                                   oninput="autoSaveIrregular()" onkeypress="handleKeyPress(event)">
+                        </td>
+                        <td style="${varianceStyle}">${variance !== 0 ? variance : '-'}</td>
+                        <td>
+                            <input type="number" step="1" min="0" data-index="${index}" data-field="production"
+                                   value="${production}" placeholder="생산량"
+                                   oninput="autoSaveIrregular()" onkeypress="handleKeyPress(event)">
+                        </td>
+                        <td>
+                            <input type="number" step="1" min="0" data-index="${index}" data-field="donation"
+                                   value="${donation}" placeholder="기부량"
+                                   oninput="autoSaveIrregular()" onkeypress="handleKeyPress(event)">
+                        </td>
+                        <td>
+                            <input type="number" step="1" min="0" data-index="${index}" data-field="closing"
+                                   value="${closing}" placeholder="기말재고"
+                                   oninput="autoSaveIrregular()" onkeypress="handleKeyPress(event)">
+                        </td>
+                        <td style="font-weight: 600; color: #667eea;">${sales}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            updateIrregularStats();
+        }
+
+        function calculateSales(opening, production, donation, closing) {
+            const o = parseFloat(opening) || 0;
+            const p = parseFloat(production) || 0;
+            const d = parseFloat(donation) || 0;
+            const c = parseFloat(closing) || 0;
+            const sales = o + p - d - c;
+            return sales > 0 ? sales : 0;
+        }
+
+        // 비정기 제품 데이터 엑셀 다운로드
+        function downloadIrregularData() {
+            if (!currentIrregularData || currentIrregularData.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            const date = document.getElementById('irregular-date').value;
+            const downloadData = currentIrregularData.map(item => {
+                const opening = item.opening_inventory || (item.prev_closing_inventory || 0);
+                const production = item.production || 0;
+                const donation = item.donation || 0;
+                const closing = item.closing_inventory || 0;
+                const sales = calculateSales(opening, production, donation, closing);
+
+                return {
+                    '제품명': item.name,
+                    '단위': item.unit,
+                    '판매가': item.price,
+                    '전날기말재고': item.prev_closing_inventory || 0,
+                    '기초재고': opening,
+                    '생산량': production,
+                    '기부량': donation,
+                    '기말재고': closing,
+                    '판매량': sales
+                };
+            });
+
+            downloadCSV(downloadData, `비정기제품_${date}.csv`);
+        }
+
+        function updateIrregularStats() {
+            const tbody = document.getElementById('irregular-body');
+            const inputs = tbody.querySelectorAll('input[type="number"]');
+
+            let filledCount = 0;
+            let totalSales = 0;
+            let totalRevenue = 0;
+
+            // 각 제품의 4개 필드를 그룹으로 체크
+            const productCount = currentIrregularData.length;
+            for (let i = 0; i < productCount; i++) {
+                const openingInput = tbody.querySelector(`input[data-index="${i}"][data-field="opening"]`);
+                const productionInput = tbody.querySelector(`input[data-index="${i}"][data-field="production"]`);
+                const donationInput = tbody.querySelector(`input[data-index="${i}"][data-field="donation"]`);
+                const closingInput = tbody.querySelector(`input[data-index="${i}"][data-field="closing"]`);
+
+                const opening = parseFloat(openingInput?.value) || 0;
+                const production = parseFloat(productionInput?.value) || 0;
+                const donation = parseFloat(donationInput?.value) || 0;
+                const closing = parseFloat(closingInput?.value) || 0;
+
+                // 하나라도 입력되어 있으면 카운트
+                if (opening > 0 || production > 0 || donation > 0 || closing > 0) {
+                    filledCount++;
+                }
+
+                const sales = calculateSales(opening, production, donation, closing);
+                totalSales += sales;
+
+                const product = currentIrregularData[i];
+                totalRevenue += sales * (product.price || 0);
+
+                const row = openingInput?.closest('tr');
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+
+                    // 오차 셀 업데이트 (6번째 셀, 0-based index로 5)
+                    const prevClosing = product.prev_closing_inventory || 0;
+                    const variance = prevClosing - opening;
+                    const varianceCell = cells[5];
+                    if (varianceCell) {
+                        varianceCell.textContent = variance !== 0 ? variance : '-';
+                        varianceCell.style.color = variance !== 0 ? '#dc3545' : '#28a745';
+                        varianceCell.style.fontWeight = variance !== 0 ? '600' : 'normal';
+                    }
+
+                    // 판매량 셀 업데이트 (마지막 셀)
+                    const salesCell = cells[cells.length - 1];
+                    if (salesCell) {
+                        salesCell.textContent = sales;
+                    }
+                }
+            }
+
+            document.getElementById('irregular-product-count').textContent = `제품: ${productCount}개`;
+            document.getElementById('irregular-filled-count').textContent = `입력됨: ${filledCount}개`;
+            document.getElementById('irregular-total-sales').textContent = `${totalSales.toLocaleString()}개`;
+            document.getElementById('irregular-total-revenue').textContent = `${Math.round(totalRevenue).toLocaleString()}원`;
+        }
+
+        async function saveIrregularData() {
+            const date = document.getElementById('irregular-date').value;
+            if (!date) return;
+
+            const tbody = document.getElementById('irregular-body');
+            const products = [];
+
+            currentIrregularData.forEach((item, index) => {
+                const openingInput = tbody.querySelector(`input[data-index="${index}"][data-field="opening"]`);
+                const productionInput = tbody.querySelector(`input[data-index="${index}"][data-field="production"]`);
+                const donationInput = tbody.querySelector(`input[data-index="${index}"][data-field="donation"]`);
+                const closingInput = tbody.querySelector(`input[data-index="${index}"][data-field="closing"]`);
+
+                products.push({
+                    product_id: item.id,
+                    opening_inventory: openingInput?.value || 0,
+                    production: productionInput?.value || 0,
+                    donation: donationInput?.value || 0,
+                    closing_inventory: closingInput?.value || 0,
+                    record_id: item.record_id
+                });
+            });
+
+            try {
+                const response = await fetch('/api/irregular-product/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, products })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('✅ 저장되었습니다!');
+                } else {
+                    showMessage('저장 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('오류 발생: ' + error.message, 'error');
+            }
+        }
+
+        function autoSaveIrregular() {
+            updateIrregularStats();
+            clearTimeout(irregularAutoSaveTimer);
+            irregularAutoSaveTimer = setTimeout(async () => {
+                await saveIrregularData();
+            }, 1000); // 1초 후 자동 저장
+        }
+
+        // ========== 판매 데이터 관리 ==========
+
+        async function loadSalesData() {
+            const date = document.getElementById('sales-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            const response = await fetch(`/api/sales/grid?date=${date}`);
+            currentSalesData = await response.json();
+
+            // 정기 제품과 비정기 제품 분리
+            const regularProducts = currentSalesData.filter(item => item.category !== '비정기 제품');
+            const irregularProducts = currentSalesData.filter(item => item.category === '비정기 제품');
+
+            const regularTbody = document.getElementById('sales-regular-body');
+            const irregularTbody = document.getElementById('sales-irregular-body');
+
+            // 정기 제품 렌더링
+            if (regularProducts.length === 0) {
+                regularTbody.innerHTML = '<tr><td colspan="10" class="empty-state">정기 제품이 없습니다</td></tr>';
+            } else {
+                regularTbody.innerHTML = regularProducts.map((item) => {
+                    const sales = item.sales || 0;
+                    const revenue = sales * (item.price || 0);
+                    const cost = sales * (item.cost || 0);
+                    const margin = revenue - cost;
+
+                    return `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                        <td>${item.unit}</td>
+                        <td class="price-display">${formatCurrency(item.price)}원</td>
+                        <td class="cost-display">${formatCurrency(item.cost)}원</td>
+                        <td>${item.production || 0}</td>
+                        <td>${item.closing_inventory || 0}</td>
+                        <td style="background: #fff3cd; font-weight: 600; color: #000;">${sales}</td>
+                        <td class="price-display">${formatCurrency(revenue)}원</td>
+                        <td class="profit-display">${formatCurrency(margin)}원</td>
+                    </tr>
+                `;
+                }).join('');
+            }
+
+            // 비정기 제품 렌더링
+            if (irregularProducts.length === 0) {
+                irregularTbody.innerHTML = '<tr><td colspan="12" class="empty-state">비정기 제품이 없습니다</td></tr>';
+            } else {
+                irregularTbody.innerHTML = irregularProducts.map((item) => {
+                    const sales = item.sales || 0;
+                    const revenue = sales * (item.price || 0);
+                    const cost = sales * (item.cost || 0);
+                    const margin = revenue - cost;
+
+                    return `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                        <td>${item.unit}</td>
+                        <td class="price-display">${formatCurrency(item.price)}원</td>
+                        <td class="cost-display">${formatCurrency(item.cost)}원</td>
+                        <td>${item.opening_inventory || 0}</td>
+                        <td>${item.production || 0}</td>
+                        <td>${item.donation || 0}</td>
+                        <td>${item.closing_inventory || 0}</td>
+                        <td style="background: #fff3cd; font-weight: 600; color: #000;">${sales}</td>
+                        <td class="price-display">${formatCurrency(revenue)}원</td>
+                        <td class="profit-display">${formatCurrency(margin)}원</td>
+                    </tr>
+                `;
+                }).join('');
+            }
+
+            updateSalesStats();
+        }
+
+        // 판매 데이터 엑셀 다운로드
+        function downloadSalesData() {
+            if (!currentSalesData || currentSalesData.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            const date = document.getElementById('sales-date').value;
+            const downloadData = currentSalesData.map(item => {
+                const sales = item.sales || 0;
+                const revenue = sales * (item.price || 0);
+                const cost = sales * (item.cost || 0);
+                const margin = revenue - cost;
+
+                const data = {
+                    '제품명': item.name,
+                    '카테고리': item.category,
+                    '단위': item.unit,
+                    '판매가': item.price,
+                    '원가': item.cost
+                };
+
+                if (item.category === '비정기 제품') {
+                    data['기초재고'] = item.opening_inventory || 0;
+                    data['생산량'] = item.production || 0;
+                    data['기부량'] = item.donation || 0;
+                    data['기말재고'] = item.closing_inventory || 0;
+                } else {
+                    data['생산량'] = item.production || 0;
+                    data['기말재고'] = item.closing_inventory || 0;
+                }
+
+                data['판매량'] = sales;
+                data['판매금액'] = revenue;
+                data['마진'] = margin;
+
+                return data;
+            });
+
+            downloadCSV(downloadData, `판매_${date}.csv`);
+        }
+
+        // 판매 통계 업데이트
+        function updateSalesStats() {
+            const regularProducts = currentSalesData.filter(item => item.category !== '비정기 제품');
+            const irregularProducts = currentSalesData.filter(item => item.category === '비정기 제품');
+
+            document.getElementById('sales-product-count').textContent = `제품: ${currentSalesData.length}개 (정기: ${regularProducts.length}, 비정기: ${irregularProducts.length})`;
+
+            // 정기 제품 판매금액
+            let regularRevenue = 0;
+            regularProducts.forEach((item) => {
+                const sales = item.sales || 0;
+                regularRevenue += sales * (item.price || 0);
+            });
+
+            // 비정기 제품 판매금액
+            let irregularRevenue = 0;
+            irregularProducts.forEach((item) => {
+                const sales = item.sales || 0;
+                irregularRevenue += sales * (item.price || 0);
+            });
+
+            const totalRevenue = regularRevenue + irregularRevenue;
+
+            document.getElementById('sales-regular-revenue').textContent = `${formatCurrency(regularRevenue)}원`;
+            document.getElementById('sales-irregular-revenue').textContent = `${formatCurrency(irregularRevenue)}원`;
+            document.getElementById('sales-total-revenue').textContent = `${formatCurrency(totalRevenue)}원`;
+        }
+
+        // ========== 기부 데이터 관리 ==========
+
+        async function loadDonationData() {
+            const date = document.getElementById('donation-date').value;
+            if (!date) { showMessage('날짜를 선택하세요', 'error'); return; }
+
+            const response = await fetch(`/api/donation/grid?date=${date}`);
+            currentDonationData = await response.json();
+            const tbody = document.getElementById('donation-body');
+
+            if (currentDonationData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">기부 데이터가 없습니다</td></tr>';
+                updateDonationStats();
+                return;
+            }
+
+            tbody.innerHTML = currentDonationData.map((item) => {
+                const donationAmount = (item.donation_quantity || 0) * (item.price || 0);
+
+                return `
+                <tr>
+                    <td>${item.name}</td>
+                    <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                    <td><span class="category-badge category-${item.product_type}">${item.product_type}</span></td>
+                    <td>${item.unit}</td>
+                    <td class="price-display">${formatCurrency(item.price)}원</td>
+                    <td style="background: #c8e6c9; font-weight: 600; color: #000;">${item.donation_quantity || 0}</td>
+                    <td class="price-display">${formatCurrency(donationAmount)}원</td>
+                </tr>
+            `;
+            }).join('');
+
+            updateDonationStats();
+        }
+
+        // 기부 데이터 엑셀 다운로드
+        function downloadDonationData() {
+            if (!currentDonationData || currentDonationData.length === 0) {
+                showMessage('다운로드할 데이터가 없습니다', 'error');
+                return;
+            }
+
+            const date = document.getElementById('donation-date').value;
+            const downloadData = currentDonationData.map(item => ({
+                '제품명': item.name,
+                '카테고리': item.category,
+                '제품구분': item.product_type,
+                '단위': item.unit,
+                '판매가': item.price,
+                '기부량': item.donation_quantity || 0,
+                '기부금액': (item.donation_quantity || 0) * (item.price || 0)
+            }));
+
+            downloadCSV(downloadData, `기부_${date}.csv`);
+        }
+
+        // 기부 통계 업데이트
+        function updateDonationStats() {
+            document.getElementById('donation-product-count').textContent = `제품: ${currentDonationData.length}개`;
+
+            let totalQuantity = 0;
+            let totalAmount = 0;
+
+            currentDonationData.forEach((item) => {
+                const quantity = item.donation_quantity || 0;
+                const amount = quantity * (item.price || 0);
+                totalQuantity += quantity;
+                totalAmount += amount;
+            });
+
+            document.getElementById('donation-total-quantity').textContent = `${totalQuantity.toLocaleString()}개`;
+            document.getElementById('donation-total-amount').textContent = `${formatCurrency(totalAmount)}원`;
+        }
+
+        // 목표 생산량 로드
+        async function loadTargetData() {
+            const response = await fetch('/api/target-production');
+            currentTargetData = await response.json();
+            const tbody = document.getElementById('target-body');
+
+            if (currentTargetData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">제품이 없습니다. "제품 관리" 탭에서 제품을 먼저 추가하세요.</td></tr>';
+                updateTargetStats();
+                return;
+            }
+
+            tbody.innerHTML = currentTargetData.map((item, index) => `
+                <tr>
+                    <td>${item.name}</td>
+                    <td><span class="category-badge category-${item.category || '기타'}">${item.category || '기타'}</span></td>
+                    <td>${item.unit}</td>
+                    <td class="price-display">${formatCurrency(item.price)}원</td>
+                    <td>
+                        <input type="number" step="1" min="0" data-index="${index}" data-field="weekday"
+                               value="${item.weekday_target || ''}" placeholder="평일 목표량"
+                               onchange="updateTargetStats()" onkeypress="handleKeyPress(event)">
+                    </td>
+                    <td>
+                        <input type="number" step="1" min="0" data-index="${index}" data-field="weekend"
+                               value="${item.weekend_target || ''}" placeholder="주말 목표량"
+                               onchange="updateTargetStats()" onkeypress="handleKeyPress(event)">
+                    </td>
+                </tr>
+            `).join('');
+
+            updateTargetStats();
+        }
+
+        // 목표 생산량 통계 업데이트
+        function updateTargetStats() {
+            let weekdayAmount = 0;
+            let weekdayCost = 0;
+            let weekendAmount = 0;
+            let weekendCost = 0;
+
+            currentTargetData.forEach((item, index) => {
+                const weekdayInput = document.querySelector(`#target-body input[data-index="${index}"][data-field="weekday"]`);
+                const weekendInput = document.querySelector(`#target-body input[data-index="${index}"][data-field="weekend"]`);
+
+                const weekdayQty = parseFloat(weekdayInput?.value) || 0;
+                const weekendQty = parseFloat(weekendInput?.value) || 0;
+
+                weekdayAmount += weekdayQty * (item.price || 0);
+                weekdayCost += weekdayQty * (item.cost || 0);
+                weekendAmount += weekendQty * (item.price || 0);
+                weekendCost += weekendQty * (item.cost || 0);
+            });
+
+            const weekdayProfit = weekdayAmount - weekdayCost;
+            const weekendProfit = weekendAmount - weekendCost;
+
+            document.getElementById('weekday-target-amount').textContent = formatCurrency(weekdayAmount) + '원';
+            document.getElementById('weekday-target-cost').textContent = formatCurrency(weekdayCost) + '원';
+            document.getElementById('weekday-target-profit').textContent = formatCurrency(weekdayProfit) + '원';
+            document.getElementById('weekend-target-amount').textContent = formatCurrency(weekendAmount) + '원';
+            document.getElementById('weekend-target-cost').textContent = formatCurrency(weekendCost) + '원';
+            document.getElementById('weekend-target-profit').textContent = formatCurrency(weekendProfit) + '원';
+        }
+
+        // 목표 생산량 저장
+        async function saveTargetData() {
+            const inputs = document.querySelectorAll('#target-body input[type="number"]');
+            const targets = [];
+
+            currentTargetData.forEach((item, index) => {
+                const weekdayInput = document.querySelector(`#target-body input[data-index="${index}"][data-field="weekday"]`);
+                const weekendInput = document.querySelector(`#target-body input[data-index="${index}"][data-field="weekend"]`);
+
+                targets.push({
+                    product_id: item.id,
+                    weekday_target: weekdayInput ? (weekdayInput.value || 0) : 0,
+                    weekend_target: weekendInput ? (weekendInput.value || 0) : 0
+                });
+            });
+
+            const response = await fetch('/api/target-production/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targets: targets })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('✅ 목표 생산량이 저장되었습니다!');
+                loadTargetData();
+            } else {
+                showMessage('저장 실패: ' + result.error, 'error');
+            }
+        }
+
+        // 전체 제품 데이터 저장
+        let allProducts = [];
+
+        // 제품 목록 로드
+        async function loadProducts() {
+            const response = await fetch('/api/products');
+            allProducts = await response.json();
+            renderProducts(allProducts);
+        }
+
+        // 제품 목록 렌더링
+        function renderProducts(products) {
+            const tbody = document.querySelector('#products-table tbody');
+
+            if (products.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">등록된 제품이 없습니다</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = products.map((p) => {
+                const costRate = p.price > 0 ? ((p.cost / p.price) * 100).toFixed(1) : 0;
+                return `
+                    <tr>
+                        <td style="text-align: center; font-weight: 600; color: #667eea;">${p.display_order || 999}</td>
+                        <td>${p.name}</td>
+                        <td><span class="category-badge category-${p.category}">${p.category}</span></td>
+                        <td><span class="stock-badge stock-${p.stock_type}">${p.stock_type}</span></td>
+                        <td>${p.unit}</td>
+                        <td class="price-display">${formatCurrency(p.price)}원</td>
+                        <td class="cost-display">${formatCurrency(p.cost)}원</td>
+                        <td class="profit-display">${costRate}%</td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn-recipe" onclick="openRecipeModal(${p.id}, '${p.name}')">레시피</button>
+                                <button class="btn-edit" onclick="editProduct(${p.id})">수정</button>
+                                <button class="btn-danger" onclick="deleteProduct(${p.id})">삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 제품 필터링
+        function filterProducts() {
+            const searchText = document.getElementById('product-search').value.toLowerCase();
+            const categoryFilter = document.getElementById('product-category-filter').value;
+            const stockFilter = document.getElementById('product-stock-filter').value;
+
+            const filtered = allProducts.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(searchText);
+                const matchesCategory = !categoryFilter || p.category === categoryFilter;
+                const matchesStock = !stockFilter || p.stock_type === stockFilter;
+                return matchesSearch && matchesCategory && matchesStock;
+            });
+
+            renderProducts(filtered);
+        }
+
+        // 필터 초기화
+        function resetProductFilter() {
+            document.getElementById('product-search').value = '';
+            document.getElementById('product-category-filter').value = '';
+            document.getElementById('product-stock-filter').value = '';
+            renderProducts(allProducts);
+        }
+
+        // 제품 추가
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('product-name').value,
+                unit: document.getElementById('product-unit').value,
+                price: document.getElementById('product-price').value,
+                cost: 0,
+                stock_type: document.getElementById('product-stock-type').value,
+                category: document.getElementById('product-category').value,
+                ecount_code: document.getElementById('product-ecount-code').value || null,
+                display_order: document.getElementById('product-order').value || 999
+            };
+
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('제품이 추가되었습니다!');
+                e.target.reset();
+                loadProducts();
+            } else {
+                showMessage(result.error || '제품 추가 실패', 'error');
+            }
+        });
+
+        // 제품 수정 모달
+        async function editProduct(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) {
+                const response = await fetch('/api/products');
+                allProducts = await response.json();
+                const product = allProducts.find(p => p.id === id);
+                if (!product) return;
+            }
+
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('edit-product-name').value = product.name;
+            document.getElementById('edit-product-unit').value = product.unit;
+            document.getElementById('edit-product-price').value = product.price;
+            document.getElementById('edit-product-stock-type').value = product.stock_type;
+            document.getElementById('edit-product-category').value = product.category;
+            document.getElementById('edit-product-ecount-code').value = product.ecount_code || '';
+            document.getElementById('edit-product-order').value = product.display_order || 999;
+            document.getElementById('edit-modal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-product-id').value;
+            const data = {
+                name: document.getElementById('edit-product-name').value,
+                unit: document.getElementById('edit-product-unit').value,
+                price: document.getElementById('edit-product-price').value,
+                cost: 0,
+                stock_type: document.getElementById('edit-product-stock-type').value,
+                category: document.getElementById('edit-product-category').value,
+                ecount_code: document.getElementById('edit-product-ecount-code').value || null,
+                display_order: document.getElementById('edit-product-order').value || 999
+            };
+
+            const response = await fetch(`/api/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('제품이 수정되었습니다!');
+                closeEditModal();
+                loadProducts();
+            } else {
+                showMessage(result.error || '제품 수정 실패', 'error');
+            }
+        });
+
+        async function deleteProduct(id) {
+            if (!confirm('이 제품과 관련된 모든 생산량 기록 및 레시피가 삭제됩니다. 계속하시겠습니까?')) return;
+            const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('제품이 삭제되었습니다');
+                loadProducts();
+            }
+        }
+
+        // 자재 유형 변경 처리 (추가 폼)
+        function handleMaterialTypeChange() {
+            const type = document.getElementById('material-type').value;
+            const priceInput = document.getElementById('material-price');
+            const priceNote = document.getElementById('material-price-note');
+
+            if (type === '프랩') {
+                priceInput.disabled = true;
+                priceInput.required = false;
+                priceInput.value = '';
+                priceInput.placeholder = '레시피에서 자동 계산';
+                priceNote.style.display = 'block';
+            } else {
+                priceInput.disabled = false;
+                priceInput.required = true;
+                priceInput.placeholder = '5000';
+                priceNote.style.display = 'none';
+            }
+        }
+
+        // 단위 선택 처리 (추가 폼)
+        function handleUnitChange() {
+            const select = document.getElementById('material-unit');
+            const customInput = document.getElementById('material-unit-custom');
+            if (select.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
+
+        // 자재 유형 변경 처리 (수정 폼)
+        function handleEditMaterialTypeChange() {
+            const type = document.getElementById('edit-material-type').value;
+            const priceInput = document.getElementById('edit-material-price');
+            const priceNote = document.getElementById('edit-material-price-note');
+
+            if (type === '프랩') {
+                priceInput.disabled = true;
+                priceInput.required = false;
+                priceInput.value = '';
+                priceInput.placeholder = '레시피에서 자동 계산';
+                priceNote.style.display = 'block';
+            } else {
+                priceInput.disabled = false;
+                priceInput.required = true;
+                priceInput.placeholder = '입고 단가 입력';
+                priceNote.style.display = 'none';
+            }
+        }
+
+        // 단위 선택 처리 (수정 폼)
+        function handleEditUnitChange() {
+            const select = document.getElementById('edit-material-unit');
+            const customInput = document.getElementById('edit-material-unit-custom');
+            if (select.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        }
+
+        // 자재 관리
+        async function loadMaterials() {
+            const response = await fetch('/api/materials');
+            allMaterials = await response.json();
+            const tbody = document.querySelector('#materials-table tbody');
+
+            if (allMaterials.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">등록된 자재가 없습니다</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = allMaterials.map(m => {
+                const pricePerUnit = m.price_per_unit || m.price_per_gram || 0;
+                return `
+                    <tr>
+                        <td>${m.name}</td>
+                        <td><span class="type-${m.type}">${m.type}</span></td>
+                        <td>${formatCurrency(m.weight)}</td>
+                        <td>${m.unit}</td>
+                        <td class="cost-display">${formatCurrency(m.purchase_price)}원</td>
+                        <td class="price-display">${pricePerUnit.toFixed(2)}원/${m.unit}</td>
+                        <td>${m.supplier || '-'}</td>
+                        <td>
+                            <div class="actions">
+                                ${m.type === '프랩' ? `<button class="btn-recipe" onclick="openMaterialRecipeModal(${m.id}, '${m.name}')">레시피</button>` : ''}
+                                <button class="btn-edit" onclick="editMaterial(${m.id})">수정</button>
+                                <button class="btn-danger" onclick="deleteMaterial(${m.id})">삭제</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('material-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const unitSelect = document.getElementById('material-unit');
+            let unit = unitSelect.value;
+            if (unit === 'custom') {
+                unit = document.getElementById('material-unit-custom').value.trim();
+                if (!unit) {
+                    showMessage('단위를 입력하세요', 'error');
+                    return;
+                }
+            }
+
+            const type = document.getElementById('material-type').value;
+            const data = {
+                name: document.getElementById('material-name').value,
+                type: type,
+                weight: document.getElementById('material-weight').value,
+                unit: unit,
+                purchase_price: type === '프랩' ? 0 : document.getElementById('material-price').value,
+                supplier: document.getElementById('material-supplier').value,
+                ecount_code: document.getElementById('material-ecount-code').value || null
+            };
+
+            const response = await fetch('/api/materials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('자재가 추가되었습니다!');
+                e.target.reset();
+                document.getElementById('material-unit').value = 'g';
+                handleUnitChange();
+                loadMaterials();
+            } else {
+                showMessage(result.error || '자재 추가 실패', 'error');
+            }
+        });
+
+        async function editMaterial(id) {
+            const material = allMaterials.find(m => m.id === id);
+            if (!material) return;
+
+            document.getElementById('edit-material-id').value = material.id;
+            document.getElementById('edit-material-name').value = material.name;
+            document.getElementById('edit-material-type').value = material.type;
+            document.getElementById('edit-material-weight').value = material.weight;
+            document.getElementById('edit-material-price').value = material.purchase_price;
+            document.getElementById('edit-material-supplier').value = material.supplier || '';
+            document.getElementById('edit-material-ecount-code').value = material.ecount_code || '';
+
+            // 단위 설정
+            const unitSelect = document.getElementById('edit-material-unit');
+            const customInput = document.getElementById('edit-material-unit-custom');
+            const standardUnits = ['g', 'kg', 'EA', 'PK', 'L', 'ml'];
+
+            if (standardUnits.includes(material.unit)) {
+                unitSelect.value = material.unit;
+                customInput.style.display = 'none';
+            } else {
+                unitSelect.value = 'custom';
+                customInput.value = material.unit;
+                customInput.style.display = 'block';
+            }
+
+            // 프랩 자재면 입고 단가 필드 비활성화
+            handleEditMaterialTypeChange();
+
+            document.getElementById('edit-material-modal').style.display = 'block';
+        }
+
+        function closeEditMaterialModal() {
+            document.getElementById('edit-material-modal').style.display = 'none';
+        }
+
+        document.getElementById('edit-material-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const unitSelect = document.getElementById('edit-material-unit');
+            let unit = unitSelect.value;
+            if (unit === 'custom') {
+                unit = document.getElementById('edit-material-unit-custom').value.trim();
+                if (!unit) {
+                    showMessage('단위를 입력하세요', 'error');
+                    return;
+                }
+            }
+
+            const id = document.getElementById('edit-material-id').value;
+            const type = document.getElementById('edit-material-type').value;
+            const data = {
+                name: document.getElementById('edit-material-name').value,
+                type: type,
+                weight: document.getElementById('edit-material-weight').value,
+                unit: unit,
+                purchase_price: type === '프랩' ? 0 : document.getElementById('edit-material-price').value,
+                supplier: document.getElementById('edit-material-supplier').value,
+                ecount_code: document.getElementById('edit-material-ecount-code').value || null
+            };
+
+            const response = await fetch(`/api/materials/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('자재가 수정되었습니다! 연관된 제품의 원가가 자동으로 재계산됩니다.');
+                closeEditMaterialModal();
+                loadMaterials();
+                loadProducts(); // 제품 목록도 갱신
+            } else {
+                showMessage(result.error || '자재 수정 실패', 'error');
+            }
+        });
+
+        async function deleteMaterial(id) {
+            if (!confirm('이 자재를 사용하는 모든 제품 레시피에서 제거됩니다. 계속하시겠습니까?')) return;
+            const response = await fetch(`/api/materials/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (result.success) {
+                showMessage('자재가 삭제되었습니다');
+                loadMaterials();
+            }
+        }
+
+        // 레시피 단위 라벨 업데이트
+        function updateRecipeUnitLabel() {
+            const select = document.getElementById('recipe-material-select');
+            const materialId = parseInt(select.value);
+            const material = allMaterials.find(m => m.id === materialId);
+            const label = document.getElementById('recipe-unit-label');
+
+            if (material) {
+                label.textContent = `(${material.unit})`;
+            } else {
+                label.textContent = '(단위)';
+            }
+        }
+
+        // 레시피 관리
+        async function openRecipeModal(productId, productName) {
+            currentRecipeProductId = productId;
+            document.getElementById('recipe-modal-title').textContent = `${productName} - 레시피 관리`;
+
+            // 자재 목록 로드 (드롭다운용)
+            if (allMaterials.length === 0) {
+                const response = await fetch('/api/materials');
+                allMaterials = await response.json();
+            }
+
+            const select = document.getElementById('recipe-material-select');
+            select.innerHTML = '<option value="">자재 선택...</option>' +
+                allMaterials.map(m => {
+                    const pricePerUnit = m.price_per_unit || m.price_per_gram || 0;
+                    return `<option value="${m.id}">${m.name} (${pricePerUnit.toFixed(2)}원/${m.unit})</option>`;
+                }).join('');
+
+            await loadRecipe();
+            document.getElementById('recipe-modal').style.display = 'block';
+        }
+
+        async function loadRecipe() {
+            const response = await fetch(`/api/products/${currentRecipeProductId}/recipe`);
+            const recipe = await response.json();
+
+            const recipeList = document.getElementById('recipe-list');
+            if (recipe.length === 0) {
+                recipeList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">레시피가 없습니다. 아래에서 자재를 추가하세요.</p>';
+                document.getElementById('recipe-total-cost').textContent = '0원';
+                return;
+            }
+
+            let totalCost = 0;
+            recipeList.innerHTML = recipe.map(r => {
+                const pricePerUnit = r.price_per_unit || r.price_per_gram || 0;
+                const itemCost = r.quantity * pricePerUnit;
+                totalCost += itemCost;
+                return `
+                    <div class="recipe-item">
+                        <div class="recipe-info">
+                            <strong>${r.name}</strong> - ${r.quantity}${r.unit} × ${pricePerUnit.toFixed(2)}원/${r.unit}
+                            = <span class="cost-display">${formatCurrency(itemCost)}원</span>
+                        </div>
+                        <div class="recipe-actions">
+                            <input type="number" step="0.01" value="${r.quantity}" style="width: 80px;" placeholder="${r.unit}"
+                                   onchange="updateRecipeQuantity(${r.id}, this.value)">
+                            <button class="btn-danger btn-small" onclick="deleteRecipeItem(${r.id})">삭제</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('recipe-total-cost').textContent = formatCurrency(totalCost) + '원';
+        }
+
+        async function addMaterialToRecipe() {
+            const materialId = document.getElementById('recipe-material-select').value;
+            const quantity = document.getElementById('recipe-material-quantity').value;
+
+            if (!materialId || !quantity || parseFloat(quantity) <= 0) {
+                showMessage('자재와 사용량을 입력하세요', 'error');
+                return;
+            }
+
+            const response = await fetch(`/api/products/${currentRecipeProductId}/recipe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ material_id: materialId, quantity: quantity })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('자재가 추가되었습니다!');
+                document.getElementById('recipe-material-quantity').value = '';
+                await loadRecipe();
+                loadProducts(); // 제품 목록 갱신 (원가 업데이트)
+            } else {
+                showMessage(result.error || '자재 추가 실패', 'error');
+            }
+        }
+
+        async function updateRecipeQuantity(recipeId, quantity) {
+            const response = await fetch(`/api/products/${currentRecipeProductId}/recipe/${recipeId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: quantity })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('사용량이 수정되었습니다!');
+                await loadRecipe();
+                loadProducts();
+            } else {
+                showMessage(result.error || '수정 실패', 'error');
+            }
+        }
+
+        async function deleteRecipeItem(recipeId) {
+            if (!confirm('이 자재를 레시피에서 제거하시겠습니까?')) return;
+
+            const response = await fetch(`/api/products/${currentRecipeProductId}/recipe/${recipeId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('자재가 제거되었습니다');
+                await loadRecipe();
+                loadProducts();
+            }
+        }
+
+        function closeRecipeModal() {
+            document.getElementById('recipe-modal').style.display = 'none';
+        }
+
+        // ==================== 자재 레시피 관리 ====================
+        let currentMaterialRecipeId = null;
+
+        // 자재 레시피 단위 라벨 업데이트
+        function updateMaterialRecipeUnitLabel() {
+            const select = document.getElementById('material-recipe-material-select');
+            const materialId = parseInt(select.value);
+            const material = allMaterials.find(m => m.id === materialId);
+            const label = document.getElementById('material-recipe-unit-label');
+
+            if (material) {
+                label.textContent = `(${material.unit})`;
+            } else {
+                label.textContent = '(단위)';
+            }
+        }
+
+        // 자재 레시피 모달 열기
+        async function openMaterialRecipeModal(materialId, materialName) {
+            currentMaterialRecipeId = materialId;
+            document.getElementById('material-recipe-modal-title').textContent = `${materialName} - 레시피 관리`;
+
+            // 자재 목록 로드 (프랩 제외 - 프랩이 프랩을 재료로 쓸 수 없음)
+            if (allMaterials.length === 0) {
+                const response = await fetch('/api/materials');
+                allMaterials = await response.json();
+            }
+
+            const select = document.getElementById('material-recipe-material-select');
+            select.innerHTML = '<option value="">자재 선택...</option>' +
+                allMaterials
+                    .filter(m => m.type !== '프랩' && m.id !== materialId) // 프랩과 자기 자신 제외
+                    .map(m => {
+                        const pricePerUnit = m.price_per_unit || m.price_per_gram || 0;
+                        return `<option value="${m.id}">${m.name} (${pricePerUnit.toFixed(2)}원/${m.unit})</option>`;
+                    }).join('');
+
+            await loadMaterialRecipe();
+            document.getElementById('material-recipe-modal').style.display = 'block';
+        }
+
+        // 자재 레시피 로드
+        async function loadMaterialRecipe() {
+            const response = await fetch(`/api/materials/${currentMaterialRecipeId}/recipe`);
+            const data = await response.json();
+            const recipe = data.recipe || [];
+
+            const recipeList = document.getElementById('material-recipe-list');
+            if (recipe.length === 0) {
+                recipeList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">레시피가 없습니다. 아래에서 재료를 추가하세요.</p>';
+                document.getElementById('material-recipe-total-cost').textContent = '0원';
+                return;
+            }
+
+            let totalCost = 0;
+            recipeList.innerHTML = recipe.map(r => {
+                const pricePerUnit = r.price_per_unit || r.price_per_gram || 0;
+                const itemCost = r.quantity * pricePerUnit;
+                totalCost += itemCost;
+                return `
+                    <div class="recipe-item">
+                        <div class="recipe-info">
+                            <strong>${r.name}</strong> (<span class="type-${r.type}">${r.type}</span>) - ${r.quantity}${r.unit} × ${pricePerUnit.toFixed(2)}원/${r.unit}
+                            = <span class="cost-display">${formatCurrency(itemCost)}원</span>
+                        </div>
+                        <div class="recipe-actions">
+                            <button class="btn-danger btn-small" onclick="deleteIngredientFromMaterialRecipe(${r.id})">삭제</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('material-recipe-total-cost').textContent = formatCurrency(totalCost) + '원';
+        }
+
+        // 자재 레시피에 재료 추가
+        async function addIngredientToMaterialRecipe() {
+            const materialId = document.getElementById('material-recipe-material-select').value;
+            const quantity = document.getElementById('material-recipe-quantity').value;
+
+            if (!materialId || !quantity || parseFloat(quantity) <= 0) {
+                showMessage('자재와 사용량을 입력하세요', 'error');
+                return;
+            }
+
+            const response = await fetch(`/api/materials/${currentMaterialRecipeId}/recipe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ material_id: materialId, quantity: quantity })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('재료가 추가되었습니다!');
+                document.getElementById('material-recipe-quantity').value = '';
+                await loadMaterialRecipe();
+                loadMaterials(); // 자재 목록 갱신 (원가 업데이트)
+            } else {
+                showMessage(result.error || '재료 추가 실패', 'error');
+            }
+        }
+
+        // 자재 레시피에서 재료 삭제
+        async function deleteIngredientFromMaterialRecipe(recipeId) {
+            if (!confirm('이 재료를 레시피에서 제거하시겠습니까?')) return;
+
+            const response = await fetch(`/api/materials/recipe/${recipeId}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showMessage('재료가 제거되었습니다');
+                await loadMaterialRecipe();
+                loadMaterials();
+            }
+        }
+
+        // 자재 레시피 모달 닫기
+        function closeMaterialRecipeModal() {
+            document.getElementById('material-recipe-modal').style.display = 'none';
+        }
+
+        // ==================== 입고 관리 ====================
+
+        // 입고 이력 로드
+        async function loadReceipts() {
+            const materialId = document.getElementById('receipt-filter-material').value;
+            const startDate = document.getElementById('receipt-filter-start').value;
+            const endDate = document.getElementById('receipt-filter-end').value;
+
+            const params = new URLSearchParams();
+            if (materialId) params.append('material_id', materialId);
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+
+            const response = await fetch(`/api/material-receipts?${params}`);
+            const receipts = await response.json();
+            const tbody = document.querySelector('#receipts-table tbody');
+
+            if (receipts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">입고 이력이 없습니다</td></tr>';
+            } else {
+                tbody.innerHTML = receipts.map(r => `
+                    <tr>
+                        <td>${r.receipt_date}</td>
+                        <td>${r.material_name}</td>
+                        <td><span class="category-badge category-${r.type}">${r.type}</span></td>
+                        <td style="text-align: right;">${formatCurrency(r.quantity)}</td>
+                        <td>${r.unit}</td>
+                        <td class="cost-display" style="text-align: right;">${formatCurrency(r.unit_price)}원</td>
+                        <td class="price-display" style="text-align: right; font-weight: 600;">${formatCurrency(r.quantity * r.unit_price)}원</td>
+                        <td>${r.supplier || '-'}</td>
+                        <td>${r.note || '-'}</td>
+                        <td>
+                            <button class="btn-small btn-secondary" onclick="deleteReceipt(${r.id}, '${r.material_name}')">삭제</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // 자재별 평균 단가 로드
+            loadMaterialAveragePrices();
+
+            // 자재 목록 로드 (드롭다운용)
+            await loadMaterialsForReceipt();
+        }
+
+        // 자재 목록 로드 (입고 등록용)
+        async function loadMaterialsForReceipt() {
+            const response = await fetch('/api/materials');
+            const materials = await response.json();
+
+            // 입고 등록 폼 자재 선택
+            const receiptMaterialSelect = document.getElementById('receipt-material');
+            receiptMaterialSelect.innerHTML = '<option value="">자재 선택</option>' +
+                materials.map(m => `<option value="${m.id}">${m.name} (${m.type})</option>`).join('');
+
+            // 필터 자재 선택
+            const filterMaterialSelect = document.getElementById('receipt-filter-material');
+            filterMaterialSelect.innerHTML = '<option value="">전체 자재</option>' +
+                materials.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        }
+
+        // 입고 등록 폼 제출
+        document.getElementById('receipt-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                material_id: document.getElementById('receipt-material').value,
+                receipt_date: document.getElementById('receipt-date').value,
+                quantity: parseFloat(document.getElementById('receipt-quantity').value),
+                unit_price: parseFloat(document.getElementById('receipt-unit-price').value),
+                supplier: document.getElementById('receipt-supplier').value,
+                note: document.getElementById('receipt-note').value
+            };
+
+            try {
+                const response = await fetch('/api/material-receipts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ 입고가 등록되었습니다!');
+                    e.target.reset();
+                    // 오늘 날짜로 초기화
+                    document.getElementById('receipt-date').valueAsDate = new Date();
+                    loadReceipts();
+                } else {
+                    showMessage('입고 등록 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('오류 발생: ' + error.message, 'error');
+            }
+        });
+
+        // 입고 삭제
+        async function deleteReceipt(receiptId, materialName) {
+            if (!confirm(`${materialName}의 입고 기록을 삭제하시겠습니까?\n\n삭제 후 평균 단가가 재계산됩니다.`)) return;
+
+            try {
+                const response = await fetch(`/api/material-receipts/${receiptId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('입고 기록이 삭제되었습니다');
+                    loadReceipts();
+                } else {
+                    showMessage('삭제 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('오류 발생: ' + error.message, 'error');
+            }
+        }
+
+        // 자재별 평균 단가 로드
+        async function loadMaterialAveragePrices() {
+            const response = await fetch('/api/materials');
+            const materials = await response.json();
+            const container = document.getElementById('material-avg-prices');
+
+            const pricePromises = materials.map(async (material) => {
+                const priceResponse = await fetch(`/api/materials/${material.id}/average-price`);
+                const priceData = await priceResponse.json();
+                return { ...material, ...priceData };
+            });
+
+            const materialsWithPrices = await Promise.all(pricePromises);
+
+            container.innerHTML = materialsWithPrices.map(m => `
+                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 3px solid #667eea;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">${m.name}</div>
+                    <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">${m.type}</div>
+                    <div style="font-size: 1.2em; font-weight: 600; color: #667eea;">
+                        ${formatCurrency(m.avg_price)}원/${m.unit}
+                    </div>
+                    <div style="font-size: 0.85em; color: #999; margin-top: 5px;">
+                        입고 ${m.receipt_count || 0}회 · 총 ${formatCurrency(m.total_quantity || 0)}${m.unit}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 대시보드 차트 인스턴스
+        let salesTrendChartInstance = null;
+        let categoryPieChartInstance = null;
+        let topProductsChartInstance = null;
+        let worstProductsChartInstance = null;
+
+        // 대시보드 데이터 로드 및 차트 렌더링
+        async function loadDashboard() {
+            const days = parseInt(document.getElementById('dashboard-days').value) || 30;
+
+            try {
+                const response = await fetch(`/api/dashboard/data?days=${days}`);
+                const data = await response.json();
+
+                // 메트릭 카드 업데이트
+                document.getElementById('dashboard-total-sales').textContent = formatCurrency(data.stats.total_sales) + '원';
+                document.getElementById('dashboard-total-production').textContent = formatCurrency(data.stats.total_cost) + '원';
+                document.getElementById('dashboard-total-margin').textContent = formatCurrency(data.stats.total_margin) + '원';
+                document.getElementById('dashboard-total-donation').textContent = formatCurrency(data.stats.total_donation) + '원';
+                document.getElementById('dashboard-avg-margin-rate').textContent = data.stats.avg_margin_rate.toFixed(1) + '%';
+
+                // 1. 일별 판매 추이 차트
+                renderSalesTrendChart(data.daily_sales);
+
+                // 2. 카테고리 분포 차트
+                renderCategoryPieChart(data.category_sales);
+
+                // 3. 상위 제품 차트
+                renderTopProductsChart(data.top_products);
+
+                // 4. 하위 제품 차트
+                renderWorstProductsChart(data.worst_products);
+
+            } catch (error) {
+                console.error('대시보드 로드 실패:', error);
+                showMessage('대시보드 데이터를 불러오는데 실패했습니다', 'error');
+            }
+        }
+
+        // 일별 판매 추이 차트
+        function renderSalesTrendChart(dailySales) {
+            const ctx = document.getElementById('salesTrendChart');
+            if (!ctx) return;
+
+            // 기존 차트 제거
+            if (salesTrendChartInstance) {
+                salesTrendChartInstance.destroy();
+            }
+
+            const labels = dailySales.map(d => d.date.substring(5)); // MM-DD 형식
+            const totalSalesData = dailySales.map(d => d.total_sales);
+
+            salesTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '일별 판매금액',
+                        data: totalSalesData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatCurrency(context.parsed.y) + '원';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value) + '원';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 카테고리 분포 차트
+        function renderCategoryPieChart(categorySales) {
+            const ctx = document.getElementById('categoryPieChart');
+            if (!ctx) return;
+
+            // 기존 차트 제거
+            if (categoryPieChartInstance) {
+                categoryPieChartInstance.destroy();
+            }
+
+            const labels = categorySales.map(c => c.category);
+            const data = categorySales.map(c => c.total_sales);
+            const colors = [
+                '#667eea', '#f56565', '#48bb78', '#ed8936',
+                '#9f7aea', '#38b2ac', '#f687b3', '#4299e1',
+                '#ecc94b', '#ed64a6'
+            ];
+
+            categoryPieChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = formatCurrency(context.parsed) + '원';
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 상위 제품 차트
+        function renderTopProductsChart(topProducts) {
+            const ctx = document.getElementById('topProductsChart');
+            if (!ctx) return;
+
+            // 기존 차트 제거
+            if (topProductsChartInstance) {
+                topProductsChartInstance.destroy();
+            }
+
+            const labels = topProducts.map(p => p.name);
+            const data = topProducts.map(p => p.total_sales);
+
+            topProductsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '판매금액',
+                        data: data,
+                        backgroundColor: '#48bb78',
+                        borderColor: '#38a169',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '판매금액: ' + formatCurrency(context.parsed.x) + '원';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value) + '원';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 하위 제품 차트
+        function renderWorstProductsChart(worstProducts) {
+            const ctx = document.getElementById('worstProductsChart');
+            if (!ctx) return;
+
+            // 기존 차트 제거
+            if (worstProductsChartInstance) {
+                worstProductsChartInstance.destroy();
+            }
+
+            const labels = worstProducts.map(p => p.name);
+            const data = worstProducts.map(p => p.total_sales);
+
+            worstProductsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '판매금액',
+                        data: data,
+                        backgroundColor: '#f56565',
+                        borderColor: '#e53e3e',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '판매금액: ' + formatCurrency(context.parsed.x) + '원';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value) + '원';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ===== 이카운트 연동 함수 =====
+
+        // 이카운트 설정 저장
+        document.getElementById('ecount-settings-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const data = {
+                com_code: document.getElementById('ecount-com-code').value.trim(),
+                user_id: document.getElementById('ecount-user-id').value.trim(),
+                zone: document.getElementById('ecount-zone').value.trim().toUpperCase(),
+                api_cert_key: document.getElementById('ecount-api-key').value.trim(),
+                lan_type: 'ko-KR'
+            };
+
+            try {
+                const response = await fetch('/api/ecount/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showMessage('이카운트 설정이 저장되었습니다.', 'success');
+                    loadEcountStats();
+                } else {
+                    showMessage('설정 저장에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('오류가 발생했습니다: ' + error.message, 'error');
+            }
+        });
+
+        // 이카운트 설정 불러오기
+        async function loadEcountSettings() {
+            try {
+                const response = await fetch('/api/ecount/settings');
+                const settings = await response.json();
+
+                if (settings) {
+                    document.getElementById('ecount-com-code').value = settings.com_code;
+                    document.getElementById('ecount-user-id').value = settings.user_id;
+                    document.getElementById('ecount-zone').value = settings.zone;
+                    // API 키는 보안상 일부만 표시
+                    document.getElementById('ecount-api-key').value = '';
+                    document.getElementById('ecount-api-key').placeholder = `저장된 키: ${settings.api_cert_key}`;
+                    showMessage('설정을 불러왔습니다.', 'success');
+                } else {
+                    showMessage('저장된 설정이 없습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('설정 불러오기 실패: ' + error.message, 'error');
+            }
+        }
+
+        // 이카운트 연결 테스트
+        async function testEcountConnection() {
+            try {
+                showMessage('이카운트에 연결 중...', 'success');
+
+                const response = await fetch('/api/ecount/test', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ 이카운트 연결 성공! SESSION_ID를 받았습니다.', 'success');
+                } else {
+                    showMessage('❌ 연결 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('오류: ' + error.message, 'error');
+            }
+        }
+
+        // 이카운트 동기화 통계 불러오기
+        async function loadEcountStats() {
+            try {
+                const response = await fetch('/api/ecount/sync-stats');
+                const stats = await response.json();
+
+                document.getElementById('ecount-stat-total').textContent = stats.total + '건';
+                document.getElementById('ecount-stat-success').textContent = stats.success + '건';
+                document.getElementById('ecount-stat-failed').textContent = stats.failed + '건';
+
+                const rate = stats.total > 0 ? ((stats.success / stats.total) * 100).toFixed(1) : 0;
+                document.getElementById('ecount-stat-rate').textContent = rate + '%';
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            }
+        }
+
+        // 날짜 범위로 데이터 동기화
+        async function syncDataByDateRange() {
+            const syncType = document.getElementById('sync-type').value;
+            const startDate = document.getElementById('sync-start-date').value;
+            const endDate = document.getElementById('sync-end-date').value;
+
+            if (!startDate || !endDate) {
+                showMessage('시작 날짜와 종료 날짜를 모두 선택해주세요.', 'error');
+                return;
+            }
+
+            if (!confirm(`${startDate}부터 ${endDate}까지의 데이터를 이카운트에 동기화하시겠습니까?`)) {
+                return;
+            }
+
+            showMessage('데이터를 동기화하는 중...', 'success');
+
+            try {
+                // 먼저 해당 기간의 데이터를 가져옵니다
+                let endpoint, dataEndpoint;
+
+                if (syncType === 'production') {
+                    dataEndpoint = `/api/production?start_date=${startDate}&end_date=${endDate}`;
+                    endpoint = '/api/ecount/sync/production/batch';
+                } else {
+                    dataEndpoint = `/api/material-receipts?start_date=${startDate}&end_date=${endDate}`;
+                    endpoint = '/api/ecount/sync/receipt/batch';
+                }
+
+                // 데이터 가져오기
+                const dataResponse = await fetch(dataEndpoint);
+                const records = await dataResponse.json();
+
+                if (records.length === 0) {
+                    showMessage('해당 기간에 동기화할 데이터가 없습니다.', 'error');
+                    return;
+                }
+
+                const ids = records.map(r => r.id);
+
+                // 배치 동기화 실행
+                const syncResponse = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(syncType === 'production' ? { production_ids: ids } : { receipt_ids: ids })
+                });
+
+                const result = await syncResponse.json();
+
+                showMessage(
+                    `동기화 완료: 성공 ${result.success}건, 실패 ${result.failed}건`,
+                    result.failed > 0 ? 'error' : 'success'
+                );
+
+                // 통계 및 로그 새로고침
+                loadEcountStats();
+                loadEcountLogs();
+
+            } catch (error) {
+                showMessage('동기화 중 오류 발생: ' + error.message, 'error');
+            }
+        }
+
+        // 이카운트 동기화 로그 불러오기
+        async function loadEcountLogs() {
+            const filterType = document.getElementById('log-filter-type').value;
+            const tbody = document.getElementById('ecount-logs-tbody');
+
+            try {
+                let url = '/api/ecount/sync-logs?limit=50';
+                if (filterType) {
+                    url += `&type=${filterType}`;
+                }
+
+                const response = await fetch(url);
+                const logs = await response.json();
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">동기화 로그가 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = logs.map(log => {
+                    const statusBadge = log.status === 'success'
+                        ? '<span style="background: #d4edda; color: #155724; padding: 3px 8px; border-radius: 4px; font-size: 11px;">✅ 성공</span>'
+                        : '<span style="background: #f8d7da; color: #721c24; padding: 3px 8px; border-radius: 4px; font-size: 11px;">❌ 실패</span>';
+
+                    const syncTypeLabel = log.sync_type === 'sale' ? '판매' : '매입';
+
+                    return `
+                        <tr>
+                            <td>${new Date(log.created_at).toLocaleString('ko-KR')}</td>
+                            <td>${syncTypeLabel}</td>
+                            <td>${log.record_id || '-'}</td>
+                            <td>${statusBadge}</td>
+                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${log.error_message || '-'}
+                            </td>
+                            <td>
+                                <button class="btn-small" onclick="showLogDetail(${log.id})">상세</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">로그 로드 실패</td></tr>';
+                console.error('로그 로드 실패:', error);
+            }
+        }
+
+        // 로그 상세 보기
+        async function showLogDetail(logId) {
+            try {
+                const response = await fetch(`/api/ecount/sync-logs?limit=1000`);
+                const logs = await response.json();
+                const log = logs.find(l => l.id === logId);
+
+                if (!log) {
+                    alert('로그를 찾을 수 없습니다.');
+                    return;
+                }
+
+                let detail = `=== 동기화 로그 상세 ===\n\n`;
+                detail += `ID: ${log.id}\n`;
+                detail += `유형: ${log.sync_type}\n`;
+                detail += `레코드 ID: ${log.record_id}\n`;
+                detail += `레코드 타입: ${log.record_type}\n`;
+                detail += `상태: ${log.status}\n`;
+                detail += `시간: ${new Date(log.created_at).toLocaleString('ko-KR')}\n\n`;
+
+                if (log.error_message) {
+                    detail += `❌ 오류 메시지:\n${log.error_message}\n\n`;
+                }
+
+                if (log.request_data) {
+                    detail += `📤 요청 데이터:\n${JSON.stringify(JSON.parse(log.request_data), null, 2)}\n\n`;
+                }
+
+                if (log.response_data) {
+                    detail += `📥 응답 데이터:\n${JSON.stringify(JSON.parse(log.response_data), null, 2)}`;
+                }
+
+                alert(detail);
+            } catch (error) {
+                alert('로그 상세 정보를 불러올 수 없습니다.');
+                console.error(error);
+            }
+        }
+
+        // ===== CSV 자동 매칭 기능 =====
+        let matchResultsData = null;
+
+        // CSV 파일 파싱
+        async function parseEcountCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(line => line.trim());
+
+                    if (lines.length < 2) {
+                        showMessage('CSV 파일이 비어있거나 형식이 올바르지 않습니다.', 'error');
+                        return;
+                    }
+
+                    // 헤더 찾기 (품목코드, 품목명 열)
+                    const header = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                    const codeIndex = header.findIndex(h => h.includes('품목') && h.includes('코드'));
+                    const nameIndex = header.findIndex(h => h.includes('품목명'));
+
+                    if (codeIndex === -1 || nameIndex === -1) {
+                        showMessage('CSV 파일에 "품목코드"와 "품목명" 열이 필요합니다.', 'error');
+                        return;
+                    }
+
+                    // 데이터 파싱
+                    const csvData = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        const row = lines[i].split(',').map(cell => cell.trim().replace(/"/g, ''));
+                        if (row[codeIndex] && row[nameIndex]) {
+                            csvData.push({
+                                code: row[codeIndex],
+                                name: row[nameIndex]
+                            });
+                        }
+                    }
+
+                    if (csvData.length === 0) {
+                        showMessage('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'error');
+                        return;
+                    }
+
+                    showMessage(`CSV 파일 파싱 완료: ${csvData.length}개 항목`);
+
+                    // 서버에 매칭 요청
+                    await matchProductsWithEcount(csvData);
+
+                } catch (error) {
+                    showMessage('CSV 파일 파싱 실패: ' + error.message, 'error');
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // 제품 매칭 요청
+        async function matchProductsWithEcount(csvData) {
+            try {
+                const response = await fetch('/api/ecount/match-products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csv_data: csvData })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    matchResultsData = result;
+                    displayMatchResults(result);
+                    showMessage(`매칭 완료! 제품 ${result.matched_products}/${result.total_products}개, 자재 ${result.matched_materials}/${result.total_materials}개`);
+                } else {
+                    showMessage('매칭 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('매칭 요청 실패: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 매칭 결과 표시
+        function displayMatchResults(result) {
+            document.getElementById('match-results').style.display = 'block';
+            document.getElementById('match-total-products').textContent = result.total_products;
+            document.getElementById('match-success-products').textContent = result.matched_products;
+            document.getElementById('match-total-materials').textContent = result.total_materials;
+            document.getElementById('match-success-materials').textContent = result.matched_materials;
+
+            const tbody = document.getElementById('match-results-body');
+            const allMatches = [...result.product_matches, ...result.material_matches];
+
+            tbody.innerHTML = allMatches.map(match => {
+                const statusText = match.matched ? '✅ 매칭됨' : '❌ 미매칭';
+                const statusColor = match.matched ? '#28a745' : '#dc3545';
+                const typeLabel = match.type === 'product' ? '제품' : '자재';
+                const suggestedCode = match.suggested_code || '-';
+                const currentCode = match.current_code || '-';
+
+                // 매칭된 항목만 체크박스 활성화
+                return `
+                    <tr style="background: ${match.matched ? '#f0f8ff' : 'white'}">
+                        <td style="padding: 8px; border: 1px solid #ddd;">${typeLabel}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${match.name}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${currentCode}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;"><strong>${suggestedCode}</strong></td>
+                        <td style="padding: 8px; border: 1px solid #ddd; color: ${statusColor};">${statusText}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                            ${match.matched ? `<input type="checkbox" class="match-checkbox" data-id="${match.id}" data-type="${match.type}" data-code="${match.suggested_code}" checked>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 선택 항목 적용
+        async function applySelectedMatches() {
+            const checkboxes = document.querySelectorAll('.match-checkbox:checked');
+            if (checkboxes.length === 0) {
+                showMessage('적용할 항목을 선택하세요.', 'error');
+                return;
+            }
+
+            const matches = Array.from(checkboxes).map(cb => ({
+                id: parseInt(cb.dataset.id),
+                type: cb.dataset.type,
+                ecount_code: cb.dataset.code
+            }));
+
+            await applyMatches(matches);
+        }
+
+        // 모든 매칭 적용
+        async function applyAllMatches() {
+            if (!matchResultsData) {
+                showMessage('매칭 결과가 없습니다.', 'error');
+                return;
+            }
+
+            const allMatches = [
+                ...matchResultsData.product_matches.filter(m => m.matched),
+                ...matchResultsData.material_matches.filter(m => m.matched)
+            ].map(m => ({
+                id: m.id,
+                type: m.type,
+                ecount_code: m.suggested_code
+            }));
+
+            if (allMatches.length === 0) {
+                showMessage('적용할 매칭 항목이 없습니다.', 'error');
+                return;
+            }
+
+            await applyMatches(allMatches);
+        }
+
+        // 매칭 적용 실행
+        async function applyMatches(matches) {
+            if (!confirm(`${matches.length}개 항목의 이카운트 코드를 업데이트하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/ecount/apply-matches', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ matches: matches })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message);
+                    clearMatchResults();
+                    // 제품/자재 목록 새로고침
+                    if (document.getElementById('products-tab').classList.contains('active')) {
+                        loadProducts();
+                    }
+                    if (document.getElementById('materials-tab').classList.contains('active')) {
+                        loadMaterials();
+                    }
+                } else {
+                    showMessage('적용 실패: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('적용 요청 실패: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 매칭 결과 지우기
+        function clearMatchResults() {
+            document.getElementById('match-results').style.display = 'none';
+            document.getElementById('match-results-body').innerHTML = '';
+            document.getElementById('ecount-csv-file').value = '';
+            matchResultsData = null;
+        }
+
+        // 모달 외부 클릭시 닫기
+        window.onclick = function(event) {
+            ['edit-modal', 'recipe-modal', 'edit-material-modal', 'material-recipe-modal'].forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target == modal) modal.style.display = 'none';
+            });
+        }
+
+        // 초기 로드
+        loadGridData();
+
+        // 입고 날짜 초기화
+        document.getElementById('receipt-date').valueAsDate = new Date();
+
+        // 이카운트 동기화 날짜 초기화 (최근 7일)
+        const today = new Date();
+        const weekAgo = new Date();
+        weekAgo.setDate(today.getDate() - 7);
+        document.getElementById('sync-start-date').valueAsDate = weekAgo;
+        document.getElementById('sync-end-date').valueAsDate = today;
+    </script>
+</body>
+</html>
