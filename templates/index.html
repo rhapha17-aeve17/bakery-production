@@ -869,6 +869,15 @@
                             <input type="text" id="ecount-zone" maxlength="2" placeholder="예: CC" required>
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ecount-wh-cd">창고 코드 (WH_CD)</label>
+                            <input type="text" id="ecount-wh-cd" maxlength="10" placeholder="기본값: 001" value="001">
+                            <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                                💡 이카운트 재고관리 > 기초정보 > 창고관리에서 창고 코드를 확인하세요.
+                            </small>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="ecount-api-key">API 인증키 (API_CERT_KEY) *</label>
                         <input type="password" id="ecount-api-key" placeholder="이카운트 API 인증키" required>
@@ -942,6 +951,23 @@
                         <button onclick="clearMatchResults()" class="btn-secondary">🗑️ 결과 지우기</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- 엑셀 대량 업로드 섹션 -->
+            <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">📊 이카운트 엑셀로 제품/자재 대량 등록</h3>
+                <p style="color: #2e7d32; margin-bottom: 15px; font-size: 14px;">
+                    이카운트 품목등록 엑셀 파일(.xlsx)을 업로드하면 <strong>품목구분</strong>에 따라 자동 분류됩니다.<br>
+                    • <strong>원자재</strong> → 자재 관리에 등록<br>
+                    • <strong>나머지</strong> (제품, 상품 등) → 제품 관리에 등록<br>
+                    ⚠️ 이미 같은 이름으로 등록된 항목은 건너뜁니다.
+                </p>
+                <div class="form-group">
+                    <label>엑셀 파일 업로드 (.xlsx)</label>
+                    <input type="file" id="excel-upload-file" accept=".xlsx,.xls" style="margin-top: 5px;">
+                </div>
+                <button onclick="uploadExcelFile()" class="btn-success">📤 업로드 및 등록</button>
+                <div id="excel-upload-result" style="display: none; margin-top: 15px; padding: 15px; background: white; border-radius: 8px;"></div>
             </div>
 
             <!-- 연동 통계 -->
@@ -3219,6 +3245,58 @@
             });
         }
 
+        // ===== 엑셀 대량 업로드 함수 =====
+        async function uploadExcelFile() {
+            const fileInput = document.getElementById('excel-upload-file');
+            const resultDiv = document.getElementById('excel-upload-result');
+
+            if (!fileInput.files.length) {
+                showMessage('파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p style="color: #666;">⏳ 업로드 중...</p>';
+
+            try {
+                const response = await fetch('/api/upload-excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h4 style="margin-bottom: 10px; color: #2e7d32;">✅ 업로드 완료</h4>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">';
+                    html += `<div><strong>제품 등록:</strong> ${data.products_added}개</div>`;
+                    html += `<div><strong>자재 등록:</strong> ${data.materials_added}개</div>`;
+                    html += `<div><strong>건너뜀 (중복):</strong> ${data.skipped}개</div>`;
+                    html += '</div>';
+                    if (data.errors && data.errors.length > 0) {
+                        html += '<details><summary style="cursor:pointer; color:#dc3545;">⚠️ 오류 ' + data.errors.length + '건</summary>';
+                        html += '<ul style="margin-top:5px; font-size:12px;">';
+                        data.errors.forEach(e => html += `<li>${e}</li>`);
+                        html += '</ul></details>';
+                    }
+                    resultDiv.innerHTML = html;
+                    showMessage(`제품 ${data.products_added}개, 자재 ${data.materials_added}개 등록 완료!`, 'success');
+                    loadProducts();
+                    loadMaterials();
+                } else {
+                    resultDiv.innerHTML = `<p style="color: #dc3545;">❌ ${data.error}</p>`;
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: #dc3545;">❌ 오류: ${error.message}</p>`;
+                showMessage('업로드 실패: ' + error.message, 'error');
+            }
+
+            fileInput.value = '';
+        }
+
         // ===== 이카운트 연동 함수 =====
 
         // 이카운트 설정 저장
@@ -3230,6 +3308,7 @@
                 user_id: document.getElementById('ecount-user-id').value.trim(),
                 zone: document.getElementById('ecount-zone').value.trim().toUpperCase(),
                 api_cert_key: document.getElementById('ecount-api-key').value.trim(),
+                wh_cd: document.getElementById('ecount-wh-cd').value.trim() || '001',
                 lan_type: 'ko-KR'
             };
 
@@ -3261,6 +3340,7 @@
                     document.getElementById('ecount-com-code').value = settings.com_code;
                     document.getElementById('ecount-user-id').value = settings.user_id;
                     document.getElementById('ecount-zone').value = settings.zone;
+                    document.getElementById('ecount-wh-cd').value = settings.wh_cd || '001';
                     // API 키는 보안상 일부만 표시
                     document.getElementById('ecount-api-key').value = '';
                     document.getElementById('ecount-api-key').placeholder = `저장된 키: ${settings.api_cert_key}`;

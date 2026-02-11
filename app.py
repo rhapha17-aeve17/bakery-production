@@ -294,48 +294,30 @@ def sync_production_to_ecount_sale(production_record_id):
         log_ecount_sync('production', production_record_id, 'production', 'failed', None, None, error_msg)
         return {'success': False, 'error': error_msg}
 
-    # 여러 가능한 API 엔드포인트 시도
+    # 생산입고 API 엔드포인트 (GoodsReceipt)
+    # IO_DATE: 입출고일자 (YYYYMMDD 형식)
+    io_date = record['production_date'].replace('-', '')  # 2026-02-10 -> 20260210
+
     api_endpoints = [
         {
-            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/Production/SaveProduction?SESSION_ID={session_id}",
+            'url': f"https://oapi{settings['zone']}.ecount.com/OAPI/V2/GoodsReceipt/SaveGoodsReceipt?SESSION_ID={session_id}",
             'payload': {
-                "ProductionList": {
-                    "BulkDatas": [{
-                        "PROD_CD": record['ecount_code'],
-                        "PROD_DES": record['product_name'],
-                        "QTY": record['quantity'],
-                        "PROD_DATE": record['production_date'],
-                        "Line": 1
-                    }]
-                }
-            }
-        },
-        {
-            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/ProductionInput/SaveProductionInput?SESSION_ID={session_id}",
-            'payload': {
-                "ProductionInputList": {
-                    "BulkDatas": [{
-                        "PROD_CD": record['ecount_code'],
-                        "PROD_DES": record['product_name'],
-                        "QTY": record['quantity'],
-                        "INPUT_DATE": record['production_date'],
-                        "Line": 1
-                    }]
-                }
-            }
-        },
-        {
-            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/Inventory/SaveProduction?SESSION_ID={session_id}",
-            'payload': {
-                "InventoryList": {
-                    "BulkDatas": [{
-                        "PROD_CD": record['ecount_code'],
-                        "PROD_DES": record['product_name'],
-                        "QTY": record['quantity'],
-                        "INPUT_DATE": record['production_date'],
-                        "Line": 1
-                    }]
-                }
+                "GoodsReceiptList": [
+                    {
+                        "BulkDatas": {
+                            "UPLOAD_SER_NO": "1",
+                            "IO_DATE": io_date,
+                            "WH_CD_T": settings.get('wh_cd', '001'),
+                            "PROD_CD": record['ecount_code'],
+                            "PROD_DES": record['product_name'],
+                            "QTY": str(record['quantity']),
+                            "PRICE": str(record['price'] or 0),
+                            "SUPPLY_AMT": str(record['quantity'] * (record['price'] or 0)),
+                            "VAT_AMT": "0",
+                            "REMARKS": "생산입고"
+                        }
+                    }
+                ]
             }
         }
     ]
@@ -1837,10 +1819,11 @@ def save_ecount_settings():
 
     # 새 설정 추가
     conn.execute('''INSERT INTO ecount_settings
-                    (com_code, user_id, zone, api_cert_key, lan_type, is_active)
-                    VALUES (?, ?, ?, ?, ?, 1)''',
+                    (com_code, user_id, zone, api_cert_key, lan_type, wh_cd, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)''',
                  (data['com_code'], data['user_id'], data['zone'],
-                  data['api_cert_key'], data.get('lan_type', 'ko-KR')))
+                  data['api_cert_key'], data.get('lan_type', 'ko-KR'),
+                  data.get('wh_cd', '001')))
     conn.commit()
     conn.close()
 
@@ -2077,6 +2060,95 @@ def apply_ecount_matches():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+
+# ==================== 엑셀 대량 업로드 API ====================
+
+@app.route('/api/upload-excel', methods=['POST'])
+def upload_excel():
+    """이카운트 품목등록 엑셀 파일로 제품/자재 대량 등록"""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '파일이 없습니다.'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': '파일을 선택해주세요.'}), 400
+
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        return jsonify({'success': False, 'error': '엑셀 파일(.xlsx)만 업로드 가능합니다.'}), 400
+
+    import openpyxl
+    from io import BytesIO
+
+    try:
+        wb = openpyxl.load_workbook(BytesIO(file.read()))
+        ws = wb.active
+
+        # 헤더 행 찾기
+        headers = [str(cell.value).strip() if cell.value else '' for cell in ws[1]]
+        col_map = {}
+        for i, h in enumerate(headers):
+            if h:
+                col_map[h] = i
+
+        products_added = 0
+        materials_added = 0
+        skipped = 0
+        errors = []
+
+        conn = get_db()
+        c = conn.cursor()
+
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            try:
+                name_idx = col_map.get('품목명', 1)
+                name = str(row[name_idx]).strip() if row[name_idx] else None
+                if not name:
+                    continue
+
+                item_type = str(row[col_map.get('품목구분', 2)]).strip() if row[col_map.get('품목구분', 2)] else ''
+                ecount_code = str(row[col_map.get('품목코드', 0)]).strip() if row[col_map.get('품목코드', 0)] else ''
+                spec = str(row[col_map.get('규격정보', 3)]).strip() if row[col_map.get('규격정보', 3)] else ''
+                group1 = str(row[col_map.get('품목그룹1', 4)]).strip() if row[col_map.get('품목그룹1', 4)] else '기타'
+                purchase_price = float(row[col_map.get('입고단가', 5)] or 0)
+                selling_price = float(row[col_map.get('출고단가', 7)] or 0)
+
+                if item_type == '원자재':
+                    # 이미 존재하는지 확인
+                    existing = c.execute('SELECT id FROM materials WHERE name = ?', (name,)).fetchone()
+                    if existing:
+                        skipped += 1
+                        continue
+                    c.execute('''INSERT INTO materials (name, type, weight, unit, purchase_price, price_per_gram, price_per_unit, ecount_code)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                             (name, '원자재', 1, spec or 'g', purchase_price, purchase_price, purchase_price, ecount_code))
+                    materials_added += 1
+                else:
+                    # 이미 존재하는지 확인
+                    existing = c.execute('SELECT id FROM products WHERE name = ?', (name,)).fetchone()
+                    if existing:
+                        skipped += 1
+                        continue
+                    c.execute('''INSERT INTO products (name, unit, price, cost, category, ecount_code, display_order)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                             (name, spec or '개', selling_price, purchase_price, group1 if group1 != 'None' else '기타', ecount_code, 999))
+                    products_added += 1
+
+            except Exception as e:
+                errors.append(f'{name}: {str(e)}')
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'products_added': products_added,
+            'materials_added': materials_added,
+            'skipped': skipped,
+            'errors': errors
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'파일 처리 오류: {str(e)}'}), 400
 
 init_db()
 
