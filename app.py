@@ -4,11 +4,12 @@ from datetime import datetime, timedelta
 import os
 import requests
 import json
+from db import init_db, get_db, DATABASE_URL
 
 app = Flask(__name__)
 
-# 데이터베이스 초기화
-def init_db():
+# 데이터베이스 초기화 (db.py에서 import한 init_db 사용)
+def _init_db_legacy():
     conn = sqlite3.connect('production.db')
     c = conn.cursor()
 
@@ -190,8 +191,8 @@ def init_db():
     conn.commit()
     conn.close()
 
-# 데이터베이스 연결 함수
-def get_db():
+# 데이터베이스 연결 함수 (db.py에서 import한 get_db 사용)
+def _get_db_legacy():
     conn = sqlite3.connect('production.db')
     conn.row_factory = sqlite3.Row
     return conn
@@ -222,8 +223,15 @@ def ecount_login(settings):
 
         result = response.json()
 
-        if result.get('SESSION_ID'):
-            return {'success': True, 'session_id': result['SESSION_ID'], 'data': result}
+        # SESSION_ID는 result['Data']['Datas']['SESSION_ID'] 또는 result['SESSION_ID']에 있을 수 있음
+        session_id = None
+        if 'Data' in result and 'Datas' in result['Data'] and 'SESSION_ID' in result['Data']['Datas']:
+            session_id = result['Data']['Datas']['SESSION_ID']
+        elif 'SESSION_ID' in result:
+            session_id = result['SESSION_ID']
+
+        if session_id:
+            return {'success': True, 'session_id': session_id, 'data': result}
         else:
             return {'success': False, 'error': '로그인 실패: SESSION_ID를 받지 못했습니다.', 'data': result}
 
@@ -254,9 +262,9 @@ def log_ecount_sync(sync_type, record_id, record_type, status, request_data=None
     conn.commit()
     conn.close()
 
-# Ecount에 판매 데이터 전송 (생산 실적 → 판매)
+# Ecount에 생산입고 데이터 전송 (생산 실적 → 생산입고)
 def sync_production_to_ecount_sale(production_record_id):
-    """생산 실적을 Ecount 판매 데이터로 전송합니다."""
+    """생산 실적을 Ecount 생산입고 데이터로 전송합니다."""
     settings = get_ecount_settings()
     if not settings:
         return {'success': False, 'error': 'Ecount 설정이 없습니다.'}
@@ -264,7 +272,7 @@ def sync_production_to_ecount_sale(production_record_id):
     # 로그인
     login_result = ecount_login(settings)
     if not login_result['success']:
-        log_ecount_sync('sale', production_record_id, 'production', 'failed', None, None, login_result['error'])
+        log_ecount_sync('production', production_record_id, 'production', 'failed', None, None, login_result['error'])
         return login_result
 
     session_id = login_result['session_id']
@@ -283,47 +291,104 @@ def sync_production_to_ecount_sale(production_record_id):
     # ecount_code 검증
     if not record['ecount_code']:
         error_msg = f'제품 "{record["product_name"]}"에 이카운트 제품코드가 설정되지 않았습니다.'
-        log_ecount_sync('sale', production_record_id, 'production', 'failed', None, None, error_msg)
+        log_ecount_sync('production', production_record_id, 'production', 'failed', None, None, error_msg)
         return {'success': False, 'error': error_msg}
 
-    try:
-        url = f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/Sale/SaveSale?SESSION_ID={session_id}"
-
-        payload = {
-            "SalesList": {
-                "BulkDatas": [{
-                    "PROD_CD": record['ecount_code'],
-                    "PROD_DES": record['product_name'],
-                    "QTY": record['quantity'],
-                    "UNIT_AMT": record['price'],
-                    "SALE_DATE": record['production_date'],
-                    "Line": 1
-                }]
+    # 여러 가능한 API 엔드포인트 시도
+    api_endpoints = [
+        {
+            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/Production/SaveProduction?SESSION_ID={session_id}",
+            'payload': {
+                "ProductionList": {
+                    "BulkDatas": [{
+                        "PROD_CD": record['ecount_code'],
+                        "PROD_DES": record['product_name'],
+                        "QTY": record['quantity'],
+                        "PROD_DATE": record['production_date'],
+                        "Line": 1
+                    }]
+                }
+            }
+        },
+        {
+            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/ProductionInput/SaveProductionInput?SESSION_ID={session_id}",
+            'payload': {
+                "ProductionInputList": {
+                    "BulkDatas": [{
+                        "PROD_CD": record['ecount_code'],
+                        "PROD_DES": record['product_name'],
+                        "QTY": record['quantity'],
+                        "INPUT_DATE": record['production_date'],
+                        "Line": 1
+                    }]
+                }
+            }
+        },
+        {
+            'url': f"https://sboapi{settings['zone']}.ecount.com/OAPI/V2/Inventory/SaveProduction?SESSION_ID={session_id}",
+            'payload': {
+                "InventoryList": {
+                    "BulkDatas": [{
+                        "PROD_CD": record['ecount_code'],
+                        "PROD_DES": record['product_name'],
+                        "QTY": record['quantity'],
+                        "INPUT_DATE": record['production_date'],
+                        "Line": 1
+                    }]
+                }
             }
         }
+    ]
 
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
 
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
-        response.raise_for_status()
+    # 각 엔드포인트를 순서대로 시도
+    for idx, endpoint in enumerate(api_endpoints):
+        try:
+            response = requests.post(endpoint['url'], json=endpoint['payload'], headers=headers, timeout=10)
+            response.raise_for_status()
 
-        result = response.json()
+            result = response.json()
 
-        log_ecount_sync('sale', production_record_id, 'production', 'success', payload, result, None)
+            # Ecount API 응답의 Status 확인 (200이 성공)
+            if result.get('Status') != 200:
+                error_msg = result.get('Error', {}).get('Message', 'API 호출 실패')
+                # 마지막 시도가 아니면 다음 엔드포인트 시도
+                if idx < len(api_endpoints) - 1:
+                    continue
+                # 마지막 시도도 실패하면 로그 기록하고 반환
+                log_ecount_sync('production', production_record_id, 'production', 'failed', endpoint['payload'], result, error_msg)
+                return {'success': False, 'error': error_msg, 'data': result}
 
-        return {'success': True, 'data': result}
+            log_ecount_sync('production', production_record_id, 'production', 'success', endpoint['payload'], result, None)
 
-    except requests.exceptions.RequestException as e:
-        error_msg = f'API 요청 실패: {str(e)}'
-        log_ecount_sync('sale', production_record_id, 'production', 'failed', payload, None, error_msg)
-        return {'success': False, 'error': error_msg}
-    except Exception as e:
-        error_msg = f'예상치 못한 오류: {str(e)}'
-        log_ecount_sync('sale', production_record_id, 'production', 'failed', payload, None, error_msg)
-        return {'success': False, 'error': error_msg}
+            return {'success': True, 'data': result, 'endpoint_used': endpoint['url']}
+
+        except requests.exceptions.RequestException as e:
+            error_msg = f'API 요청 실패 (시도 {idx+1}/{len(api_endpoints)}): {str(e)}'
+
+            # 마지막 시도가 실패하면 로그 기록
+            if idx == len(api_endpoints) - 1:
+                log_ecount_sync('production', production_record_id, 'production', 'failed', endpoint['payload'], None, error_msg)
+                return {'success': False, 'error': f'모든 API 엔드포인트 시도 실패. 마지막 오류: {str(e)}'}
+
+            # 다음 엔드포인트 시도
+            continue
+        except Exception as e:
+            error_msg = f'예상치 못한 오류 (시도 {idx+1}/{len(api_endpoints)}): {str(e)}'
+
+            # 마지막 시도가 실패하면 로그 기록
+            if idx == len(api_endpoints) - 1:
+                log_ecount_sync('production', production_record_id, 'production', 'failed', endpoint['payload'], None, error_msg)
+                return {'success': False, 'error': f'모든 API 엔드포인트 시도 실패. 마지막 오류: {str(e)}'}
+
+            # 다음 엔드포인트 시도
+            continue
+
+    return {'success': False, 'error': '알 수 없는 오류가 발생했습니다.'}
 
 # Ecount에 매입 데이터 전송 (자재 입고 → 매입)
 def sync_receipt_to_ecount_purchase(receipt_id):
@@ -849,7 +914,7 @@ def add_ingredient_to_material(material_id):
                        VALUES (?, ?, ?)''',
                     (material_id, data['material_id'], data['quantity']))
         conn.commit()
-        new_id = c.execute('SELECT last_insert_rowid()').fetchone()[0]
+        new_id = c.lastrowid
 
         # 프랩 자재의 입고 단가 재계산
         update_prep_material_cost(material_id, conn)
